@@ -3,7 +3,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import DeleteButton from '@/components/delete-button'
 
-export const dynamic = 'force-dynamic'
+// 👇 THIS IS THE CRITICAL MISSING LINE
+// Without this, Vercel shows a "stale snapshot" of your DB.
+export const dynamic = 'force-dynamic' 
 
 export default async function ProductsPage() {
   // Fetch all products with their categories and images
