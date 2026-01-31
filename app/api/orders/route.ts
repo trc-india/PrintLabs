@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     // Full shipping address
     const fullAddress = `${shipping_address}, ${shipping_city}, ${shipping_state} - ${shipping_pincode}`
 
-    // Create order
+    // 1. Create order
     const { data: order, error: orderError } = await supabaseAdmin
       .from('orders')
       .insert({
@@ -42,14 +42,18 @@ export async function POST(request: Request) {
 
     if (orderError) throw orderError
 
-    // Create order items
+    // 2. Create order items (Fixed to match Checkout Payload + Added Customization)
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
-      product_id: item.productId,
-      product_name: item.productName,
+      product_id: item.product_id,              // Matched with Checkout
       quantity: item.quantity,
-      unit_price: item.price,
-      total_price: item.price * item.quantity,
+      price_at_purchase: item.price_at_purchase,// Matched with Checkout
+      customization_details: item.customization_details, // <--- CRITICAL: Saving the custom data
+      
+      // We calculate total line price here to be safe
+      // (Optional: If your DB has a product_name column, we pass it here if provided, 
+      // otherwise we assume the ID is enough)
+      // product_name: item.product_name || '', 
     }))
 
     const { error: itemsError } = await supabaseAdmin
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
       .insert(orderItems)
 
     if (itemsError) {
-      // Rollback: delete the order if items insertion fails
+      // Rollback: delete the order if items insertion fails to prevent "empty" orders
       await supabaseAdmin.from('orders').delete().eq('id', order.id)
       throw itemsError
     }
@@ -67,6 +71,7 @@ export async function POST(request: Request) {
       order_number: orderNumber,
       order_id: order.id,
     })
+
   } catch (error) {
     console.error('Order creation error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

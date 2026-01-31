@@ -2,7 +2,6 @@
 
 import { useCart } from '@/lib/cart-context'
 import { useState } from 'react'
-import Link from 'next/link'
 
 interface AddToCartButtonProps {
   product: {
@@ -16,9 +15,11 @@ interface AddToCartButtonProps {
       sort_order: number
     }[]
   }
+  customization?: any // New prop to pass user choices
+  disabled?: boolean  // Block click if validation fails
 }
 
-export default function AddToCartButton({ product }: AddToCartButtonProps) {
+export default function AddToCartButton({ product, customization, disabled = false }: AddToCartButtonProps) {
   const { addItem } = useCart()
   const [added, setAdded] = useState(false)
 
@@ -27,12 +28,15 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
   ) || product.product_images?.[0]
 
   const handleAddToCart = () => {
+    if (disabled) return
+
     addItem({
       productId: product.id,
       productName: product.name,
       productSlug: product.slug,
       price: product.base_price,
       imageUrl: coverImage?.image_url || '',
+      customization: customization || null, // Pass the data to context
     })
 
     setAdded(true)
@@ -43,23 +47,17 @@ export default function AddToCartButton({ product }: AddToCartButtonProps) {
     <div className="space-y-4">
       <button
         onClick={handleAddToCart}
+        disabled={disabled}
         className={`w-full py-4 rounded-lg font-semibold text-lg transition ${
           added
             ? 'bg-green-600 text-white'
-            : 'bg-black text-white hover:bg-gray-800'
+            : disabled 
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-black text-white hover:bg-gray-800'
         }`}
       >
         {added ? '✓ Added to Cart!' : 'Add to Cart'}
       </button>
-
-      {product.is_customizable && (
-        <Link
-          href={`/products/${product.slug}/customize`}
-          className="block w-full py-4 border-2 border-black text-black rounded-lg hover:bg-gray-50 font-semibold text-lg text-center"
-        >
-          Customize This Product
-        </Link>
-      )}
     </div>
   )
 }
