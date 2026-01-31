@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 
 interface DeleteButtonProps {
   id: string
-  endpoint: 'products' | 'categories' // which API to call
+  // ⬇️ UPDATED: Added 'banners' and 'groups' to the allowed list
+  endpoint: 'products' | 'categories' | 'banners' | 'groups'
 }
 
 export default function DeleteButton({ id, endpoint }: DeleteButtonProps) {
