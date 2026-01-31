@@ -44,31 +44,26 @@ export async function PUT(
 
     if (productError) throw productError
 
-    // 2. Handle Images (Simple Strategy: Delete all old, Insert all new)
-    // Only do this if imageUrls is provided
+    // 2. Handle Images (Delete old, Insert new)
     if (imageUrls && Array.isArray(imageUrls)) {
-        // Delete old images
         await supabaseAdmin
             .from('product_images')
             .delete()
             .eq('product_id', id)
         
-        // Insert new images
         if (imageUrls.length > 0) {
             const imageInserts = imageUrls
-                .filter((url: string) => url && url.trim() !== '')
-                .map((url: string, index: number) => ({
+                .filter(url => url.trim() !== '')
+                .map((url, index) => ({
                     product_id: id,
                     image_url: url,
                     sort_order: index
                 }))
             
             if (imageInserts.length > 0) {
-                const { error: imageError } = await supabaseAdmin
+                await supabaseAdmin
                     .from('product_images')
                     .insert(imageInserts)
-                
-                if (imageError) throw imageError
             }
         }
     }
@@ -86,7 +81,28 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    // 1. Delete linked images first (Fixes the 500 Error)
+    // --- SAFETY CHECK START ---
+    // Check if product is used in orders BEFORE deleting anything
+    const { data: usageCheck, error: checkError } = await supabaseAdmin
+      .from('order_items')
+      .select('id')
+      .eq('product_id', id)
+      .limit(1)
+
+    if (checkError) throw checkError
+
+    // If we find the product in ANY order, stop immediately.
+    // This prevents deleting the images if the product deletion is going to fail anyway.
+    if (usageCheck && usageCheck.length > 0) {
+        return NextResponse.json(
+            { error: 'Cannot delete: This product is part of existing orders. Please set it to "Out of Stock" or "Draft" instead.' },
+            { status: 400 }
+        )
+    }
+    // --- SAFETY CHECK END ---
+
+
+    // 1. Now it is safe to delete images
     const { error: imageError } = await supabaseAdmin
       .from('product_images')
       .delete()
@@ -100,16 +116,7 @@ export async function DELETE(
       .delete()
       .eq('id', id)
 
-    if (productError) {
-      // Check for Foreign Key Violation (e.g. Product is in an order)
-      if (productError.code === '23503') {
-        return NextResponse.json(
-          { error: 'Cannot delete: This product is part of existing orders. Please set it to "Out of Stock" or "Draft" instead.' },
-          { status: 400 }
-        )
-      }
-      throw productError
-    }
+    if (productError) throw productError
 
     return NextResponse.json({ success: true })
 
