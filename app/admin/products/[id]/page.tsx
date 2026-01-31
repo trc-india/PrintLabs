@@ -137,7 +137,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   const addChoiceToGroup = (groupIndex: number) => {
     const newGroups = [...customConfig.visualOptions];
-    // ID FIX: Unique ID generated once
     const uniqueId = `val_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     
     newGroups[groupIndex].choices.push({ label: 'New Choice', value: uniqueId, imageUrl: '' });
@@ -147,7 +146,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const updateChoice = (groupIndex: number, choiceIndex: number, field: keyof VisualChoice, value: string) => {
       const newGroups = [...customConfig.visualOptions];
       newGroups[groupIndex].choices[choiceIndex][field] = value;
-       // ID FIX: Auto-update logic REMOVED. ID never changes now.
       setCustomConfig(prev => ({ ...prev, visualOptions: newGroups }));
   }
   
@@ -243,6 +241,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                         <option value="draft">Draft</option>
                         <option value="out_of_stock">Out of Stock</option>
                     </select>
+                </div>
+                 {/* Added Description Here */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                        rows={3}
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full border p-2 rounded"
+                        placeholder="Product description..."
+                    />
                 </div>
             </div>
         </div>

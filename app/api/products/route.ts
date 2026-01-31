@@ -1,105 +1,66 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
-// GET all products
+// GET: Fetch all products
 export async function GET() {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('products')
-      .select(`
-        *,
-        categories (
-          name
-        )
-      `)
-      .order('created_at', { ascending: false })
+  const { data, error } = await supabaseAdmin
+    .from('products')
+    .select('*, categories(name)')
+    .order('created_at', { ascending: false })
 
-    if (error) throw error
-
-    return NextResponse.json(data)
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
 }
 
-// POST create new product
+// POST: Create a new product
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { 
-      name, 
-      slug, 
-      category_id, 
-      description, 
-      base_price,
-      is_customizable,
-      production_time_hours,
-      status,
-      images // This is the array of image URLs
-    } = body
+    
+    // 1. Separate 'imageUrls' from the rest of the product data
+    // We MUST remove imageUrls because it is not a column in the 'products' table
+    const { imageUrls, ...productData } = body
 
-    // Check if slug already exists
-    const { data: existing } = await supabaseAdmin
-      .from('products')
-      .select('id')
-      .eq('slug', slug)
-      .single()
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'A product with this slug already exists' },
-        { status: 400 }
-      )
-    }
-
-    // Insert product first
+    // 2. Insert the Product into the database
+    // This saves name, price, customization_config, etc.
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .insert({
-        name,
-        slug,
-        category_id: category_id || null,
-        description,
-        base_price,
-        is_customizable: is_customizable !== undefined ? is_customizable : true,
-        production_time_hours: production_time_hours || 24,
-        status: status || 'active',
-      })
+      .insert(productData)
       .select()
       .single()
 
-    if (productError) throw productError
+    if (productError) {
+        console.error('Product Insert Error:', productError)
+        throw productError
+    }
 
-    // Now insert product images
-    if (images && images.length > 0) {
-      const imageRecords = images.map((url: string, index: number) => ({
-        product_id: product.id,
-        image_url: url,
-        sort_order: index, // First image (index 0) will be the cover
-        alt_text: `${name} - Image ${index + 1}`
-      }))
+    // 3. Insert Images (if any provided)
+    // We use the ID of the product we just created
+    if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+      const imageInserts = imageUrls
+        .filter((url: string) => url && url.trim() !== '')
+        .map((url: string, index: number) => ({
+          product_id: product.id,
+          image_url: url,
+          sort_order: index
+        }))
 
-      const { error: imagesError } = await supabaseAdmin
-        .from('product_images')
-        .insert(imageRecords)
+      if (imageInserts.length > 0) {
+        const { error: imageError } = await supabaseAdmin
+          .from('product_images')
+          .insert(imageInserts)
 
-      if (imagesError) {
-        // If images fail, delete the product to keep data consistent
-        await supabaseAdmin.from('products').delete().eq('id', product.id)
-        throw imagesError
+        if (imageError) {
+          console.error('Image Insert Error:', imageError)
+          // We don't throw here to avoid crashing the whole request if just images fail
+        }
       }
     }
 
-    return NextResponse.json(product, { status: 201 })
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+    return NextResponse.json(product)
+
+  } catch (error: any) {
+    console.error('Create Product Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

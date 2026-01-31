@@ -80,8 +80,6 @@ export default function NewProductPage() {
   }
 
   // --- BUILDER HELPERS ---
-
-  // 1. Input Helpers
   const addInput = (type: 'text' | 'file') => {
     const newId = `input_${Date.now()}`
     setCustomConfig((prev) => ({
@@ -106,7 +104,6 @@ export default function NewProductPage() {
     }))
   }
 
-  // 2. Visual Option Helpers
   const addVisualGroup = () => {
     const newId = `option_${Date.now()}`
     setCustomConfig((prev) => ({
@@ -127,8 +124,6 @@ export default function NewProductPage() {
 
   const addChoiceToGroup = (groupIndex: number) => {
     const newGroups = [...customConfig.visualOptions]
-    // ID FIX: We use Date.now() + Random to ensure it is unique.
-    // We do NOT change this value later based on the label.
     const uniqueId = `val_${Date.now()}_${Math.floor(Math.random() * 1000)}`
     
     newGroups[groupIndex].choices.push({
@@ -147,7 +142,6 @@ export default function NewProductPage() {
   ) => {
     const newGroups = [...customConfig.visualOptions]
     newGroups[groupIndex].choices[choiceIndex][field] = value
-    // ID FIX: Logic to auto-update 'value' removed to prevent collisions.
     setCustomConfig((prev) => ({ ...prev, visualOptions: newGroups }))
   }
 
@@ -195,7 +189,6 @@ export default function NewProductPage() {
     }
   }
 
-  // Image Helper
   const updateUrl = (index: number, val: string) => {
     const newUrls = [...imageUrls]
     newUrls[index] = val
@@ -288,6 +281,17 @@ export default function NewProductPage() {
                 <option value="draft">Draft</option>
                 <option value="out_of_stock">Out of Stock</option>
               </select>
+            </div>
+            {/* Added Description Here */}
+            <div>
+                <label className="block text-sm font-medium mb-1">Description</label>
+                <textarea
+                    rows={3}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full border p-2 rounded"
+                    placeholder="Product description..."
+                />
             </div>
           </div>
         </div>
