@@ -21,7 +21,7 @@ export async function GET(
   // Flatten images for the frontend
   const formattedProduct = {
     ...product,
-    imageUrls: product.product_images.map((img: any) => img.image_url)
+    imageUrls: product.product_images ? product.product_images.map((img: any) => img.image_url) : []
   }
 
   return NextResponse.json(formattedProduct)
@@ -56,8 +56,8 @@ export async function PUT(
         // Insert new images
         if (imageUrls.length > 0) {
             const imageInserts = imageUrls
-                .filter(url => url.trim() !== '')
-                .map((url, index) => ({
+                .filter((url: string) => url && url.trim() !== '')
+                .map((url: string, index: number) => ({
                     product_id: id,
                     image_url: url,
                     sort_order: index
@@ -83,9 +83,38 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const { error } = await supabaseAdmin.from('products').delete().eq('id', id)
+  try {
+    const { id } = await params
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+    // 1. Delete linked images first (Fixes the 500 Error)
+    const { error: imageError } = await supabaseAdmin
+      .from('product_images')
+      .delete()
+      .eq('product_id', id)
+
+    if (imageError) throw imageError
+
+    // 2. Delete the product
+    const { error: productError } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('id', id)
+
+    if (productError) {
+      // Check for Foreign Key Violation (e.g. Product is in an order)
+      if (productError.code === '23503') {
+        return NextResponse.json(
+          { error: 'Cannot delete: This product is part of existing orders. Please set it to "Out of Stock" or "Draft" instead.' },
+          { status: 400 }
+        )
+      }
+      throw productError
+    }
+
+    return NextResponse.json({ success: true })
+
+  } catch (error: any) {
+    console.error('Delete error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

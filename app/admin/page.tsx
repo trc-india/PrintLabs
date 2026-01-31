@@ -39,7 +39,7 @@ export default async function AdminDashboard() {
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-bold">PrintLabs Admin</h1>
             <div className="flex gap-4">
-              <Link href="/admin/dashboard" className="text-black font-semibold">
+              <Link href="/admin" className="text-black font-semibold">
                 Dashboard
               </Link>
               <Link href="/admin/products" className="text-gray-700 hover:text-black">
