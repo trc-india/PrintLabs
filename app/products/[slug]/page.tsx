@@ -3,7 +3,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import AddToCartButton from '@/components/add-to-cart-button'
-import Navbar from '@/components/navbar'
 import CustomProductBuilder from '@/components/custom-product-builder'
 
 export default async function ProductDetailPage({
@@ -40,7 +39,6 @@ export default async function ProductDetailPage({
   if (product.is_customizable) {
     return (
         <div className="min-h-screen bg-white">
-            <Navbar />
             <CustomProductBuilder product={product} />
         </div>
     )
@@ -67,7 +65,6 @@ export default async function ProductDetailPage({
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
