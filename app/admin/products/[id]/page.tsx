@@ -43,116 +43,142 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     category_id: '',
     description: '',
     base_price: '',
+    tags: '', // <--- NEW: State for Tags
     is_customizable: false,
     production_time_hours: 24,
     status: 'active',
   })
 
+  // Builder State
   const [customConfig, setCustomConfig] = useState<CustomConfig>({
-    heading: 'Customize Your Order',
+    heading: 'Customize Your Product',
     inputs: [],
     visualOptions: []
   })
 
+  // 1. Fetch Categories
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const catRes = await fetch('/api/categories')
-        const catData = await catRes.json()
-        setCategories(catData)
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategories(data))
+  }, [])
 
-        const prodRes = await fetch(`/api/products/${id}`)
-        if (!prodRes.ok) throw new Error('Product not found')
-        const prodData = await prodRes.json()
+  // 2. Fetch Product Data
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await fetch(`/api/products/${id}`)
+        if (!res.ok) throw new Error('Failed')
+        const data = await res.json()
 
         setFormData({
-            name: prodData.name,
-            slug: prodData.slug,
-            category_id: prodData.category_id,
-            description: prodData.description || '',
-            base_price: prodData.base_price,
-            is_customizable: prodData.is_customizable || false,
-            production_time_hours: prodData.production_time_hours,
-            status: prodData.status,
+            name: data.name,
+            slug: data.slug,
+            category_id: data.category_id || '',
+            description: data.description || '',
+            base_price: data.base_price,
+            tags: data.tags ? data.tags.join(', ') : '', // <--- Join array to string for display
+            is_customizable: data.is_customizable,
+            production_time_hours: data.production_time_hours || 24,
+            status: data.status
         })
 
-        if (prodData.customization_config) {
-             const loadedConfig = prodData.customization_config;
-             setCustomConfig({
-                 heading: loadedConfig.heading || 'Customize',
-                 inputs: loadedConfig.inputs || loadedConfig.fields || [],
-                 visualOptions: loadedConfig.visualOptions || []
-             })
+        if (data.imageUrls && data.imageUrls.length > 0) {
+            setImageUrls(data.imageUrls)
         }
 
-        if (prodData.imageUrls && prodData.imageUrls.length > 0) {
-            setImageUrls(prodData.imageUrls)
+        if (data.customization_config) {
+            setCustomConfig(data.customization_config)
         }
+
       } catch (err) {
         console.error(err)
-        alert('Failed to load product data')
       } finally {
         setLoading(false)
       }
     }
-    fetchData()
+    fetchProduct()
   }, [id])
 
-  // Helpers
-  const addInput = (type: 'text' | 'file') => {
-      const newId = `input_${Date.now()}`
-      setCustomConfig(prev => ({
-          ...prev,
-          inputs: [...prev.inputs, { id: newId, type, label: type === 'text' ? 'Enter Text' : 'Upload File', required: true }]
-      }))
+  // --- Handlers (Same as New Page) ---
+  const handleImageUrlChange = (index: number, value: string) => {
+    const newUrls = [...imageUrls]
+    newUrls[index] = value
+    setImageUrls(newUrls)
   }
 
-  const updateInput = (index: number, field: string, value: any) => {
-      const newInputs = [...customConfig.inputs];
-      newInputs[index] = { ...newInputs[index], [field]: value };
-      setCustomConfig(prev => ({ ...prev, inputs: newInputs }));
+  const addImageUrl = () => {
+    setImageUrls([...imageUrls, ''])
+  }
+
+  const removeImageUrl = (index: number) => {
+    const newUrls = imageUrls.filter((_, i) => i !== index)
+    setImageUrls(newUrls)
+  }
+
+  // Builder Helpers
+  const addInput = () => {
+    const newInput: InputField = {
+        id: `input_${Date.now()}`,
+        type: 'text',
+        label: 'New Input',
+        required: true
+    }
+    setCustomConfig({
+        ...customConfig,
+        inputs: [...customConfig.inputs, newInput]
+    })
+  }
+
+  const updateInput = (index: number, field: keyof InputField, value: any) => {
+    const newInputs = [...customConfig.inputs]
+    newInputs[index] = { ...newInputs[index], [field]: value }
+    setCustomConfig({ ...customConfig, inputs: newInputs })
   }
 
   const removeInput = (index: number) => {
-      setCustomConfig(prev => ({
-          ...prev,
-          inputs: prev.inputs.filter((_, i) => i !== index)
-      }))
+    const newInputs = customConfig.inputs.filter((_, i) => i !== index)
+    setCustomConfig({ ...customConfig, inputs: newInputs })
   }
 
   const addVisualGroup = () => {
-      const newId = `option_${Date.now()}`
-      setCustomConfig(prev => ({
-          ...prev,
-          visualOptions: [...prev.visualOptions, { id: newId, name: 'New Option', choices: [] }]
-      }))
+    const newGroup: VisualOptionGroup = {
+        id: `group_${Date.now()}`,
+        name: 'New Option Group',
+        choices: []
+    }
+    setCustomConfig({
+        ...customConfig,
+        visualOptions: [...customConfig.visualOptions, newGroup]
+    })
   }
-  
-  const removeVisualGroup = (groupIndex: number) => {
-      setCustomConfig(prev => ({
-          ...prev,
-          visualOptions: prev.visualOptions.filter((_, i) => i !== groupIndex)
-      }))
+
+  const updateVisualGroup = (index: number, field: keyof VisualOptionGroup, value: any) => {
+    const newGroups = [...customConfig.visualOptions]
+    newGroups[index] = { ...newGroups[index], [field]: value }
+    setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
 
   const addChoiceToGroup = (groupIndex: number) => {
-    const newGroups = [...customConfig.visualOptions];
-    const uniqueId = `val_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newGroups = [...customConfig.visualOptions]
+    // Unique ID Fix here too
+    const uniqueId = `choice_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`
     
-    newGroups[groupIndex].choices.push({ label: 'New Choice', value: uniqueId, imageUrl: '' });
-    setCustomConfig(prev => ({ ...prev, visualOptions: newGroups }));
+    newGroups[groupIndex].choices.push({
+        label: 'New Choice',
+        value: uniqueId,
+        imageUrl: ''
+    })
+    setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
 
   const updateChoice = (groupIndex: number, choiceIndex: number, field: keyof VisualChoice, value: string) => {
-      const newGroups = [...customConfig.visualOptions];
-      newGroups[groupIndex].choices[choiceIndex][field] = value;
-      setCustomConfig(prev => ({ ...prev, visualOptions: newGroups }));
-  }
-  
-   const removeChoice = (groupIndex: number, choiceIndex: number) => {
-      const newGroups = [...customConfig.visualOptions];
-      newGroups[groupIndex].choices = newGroups[groupIndex].choices.filter((_, i) => i !== choiceIndex);
-      setCustomConfig(prev => ({ ...prev, visualOptions: newGroups }));
+    const newGroups = [...customConfig.visualOptions]
+    newGroups[groupIndex].choices[choiceIndex] = {
+        ...newGroups[groupIndex].choices[choiceIndex],
+        [field]: value
+    }
+    setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -160,13 +186,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     setSaving(true)
 
     try {
-      const finalConfig = formData.is_customizable ? customConfig : null;
+      // Parse Tags
+      const tagsArray = formData.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag !== '')
 
       const payload = {
         ...formData,
-        customization_config: finalConfig,
-        customization_rules: null, 
-        imageUrls: imageUrls.filter(url => url.trim() !== '')
+        tags: tagsArray, // <--- Send Array
+        imageUrls: imageUrls.filter(url => url.trim() !== ''),
+        customization_config: formData.is_customizable ? customConfig : null
       }
 
       const res = await fetch(`/api/products/${id}`, {
@@ -176,189 +206,138 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       })
 
       if (!res.ok) throw new Error('Failed to update')
-      alert('Product updated successfully!')
+
+      router.push('/admin/products')
       router.refresh()
-    } catch (err) {
+    } catch (error) {
       alert('Error updating product')
     } finally {
       setSaving(false)
     }
   }
 
-  const updateUrl = (index: number, val: string) => {
-    const newUrls = [...imageUrls]
-    newUrls[index] = val
-    setImageUrls(newUrls)
-  }
-  const addUrlField = () => setImageUrls([...imageUrls, ''])
-
-  if (loading) return <div className="p-8">Loading product data...</div>
+  if (loading) return <div className="p-8 text-center">Loading product...</div>
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Edit Product</h1>
-          <Link href="/admin/products" className="text-gray-600 hover:text-black">← Back</Link>
+    <div className="max-w-4xl mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">Edit Product</h1>
+        <Link href="/admin/products" className="text-gray-600 hover:text-black">Cancel</Link>
       </div>
-      
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Details */}
-        <div className="bg-white p-6 rounded-lg shadow grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-                <h2 className="font-bold text-lg mb-4">Basic Details</h2>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Product Name</label>
-                    <input type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border p-2 rounded"/>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Slug</label>
-                    <input type="text" required value={formData.slug} onChange={(e) => setFormData({...formData, slug: e.target.value})} className="w-full border p-2 rounded bg-gray-50"/>
-                </div>
-                 <div>
-                    <label className="block text-sm font-medium mb-1">Category</label>
-                    <select value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="w-full border p-2 rounded" required>
-                        <option value="">Select Category</option>
-                        {categories.map((c: any) => (<option key={c.id} value={c.id}>{c.name}</option>))}
-                    </select>
-                </div>
-            </div>
-            <div className="space-y-4">
-                 <h2 className="font-bold text-lg mb-4 invisible">.</h2>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Price (₹)</label>
-                        <input type="number" required value={formData.base_price} onChange={(e) => setFormData({...formData, base_price: e.target.value})} className="w-full border p-2 rounded"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Hours</label>
-                        <input type="number" required value={formData.production_time_hours} onChange={(e) => setFormData({...formData, production_time_hours: Number(e.target.value)})} className="w-full border p-2 rounded"/>
-                    </div>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full border p-2 rounded">
-                        <option value="active">Active</option>
-                        <option value="draft">Draft</option>
-                        <option value="out_of_stock">Out of Stock</option>
-                    </select>
-                </div>
-                 {/* Added Description Here */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">Description</label>
-                    <textarea
-                        rows={3}
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        className="w-full border p-2 rounded"
-                        placeholder="Product description..."
-                    />
-                </div>
-            </div>
-        </div>
 
-         {/* Images */}
-         <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="font-bold text-lg mb-4">Gallery Images</h2>
-            <div className="space-y-3">
-                {imageUrls.map((url, i) => (
-                    <div key={i} className="flex gap-2">
-                        <input type="text" value={url} onChange={(e) => updateUrl(i, e.target.value)} placeholder="https://..." className="flex-1 border p-2 rounded text-sm"/>
-                    </div>
-                ))}
-                <button type="button" onClick={addUrlField} className="text-sm text-blue-600 underline">+ Add URL slot</button>
+      <form onSubmit={handleSubmit} className="space-y-8 pb-20">
+        
+        <div className="bg-white p-6 rounded-lg shadow space-y-4">
+          <h2 className="text-lg font-semibold mb-4">Basic Information</h2>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Product Name</label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full border p-2 rounded focus:ring-2 focus:ring-black"
+              />
             </div>
-         </div>
+            <div>
+               <label className="block text-sm font-medium mb-1">Category</label>
+               <select
+                 value={formData.category_id}
+                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                 className="w-full border p-2 rounded focus:ring-2 focus:ring-black"
+                 required
+               >
+                 <option value="">Select Category</option>
+                 {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                 ))}
+               </select>
+            </div>
+          </div>
 
-        {/* Customization Builder */}
-        <div className="bg-gray-50 p-6 rounded-lg border-2 border-blue-100">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center">
-                    <input
-                        type="checkbox" id="is_customizable" checked={formData.is_customizable}
-                        onChange={(e) => setFormData({ ...formData, is_customizable: e.target.checked })}
-                        className="h-5 w-5 text-black border-gray-300 rounded"
-                    />
-                    <label htmlFor="is_customizable" className="ml-2 text-lg font-bold text-gray-900">Enable Customization Engine</label>
+          {/* --- NEW TAGS INPUT --- */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+                Tags (Comma separated)
+            </label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              placeholder="gift, couple, best-seller"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-black"
+            />
+          </div>
+          {/* ---------------------- */}
+
+          <div>
+             <label className="block text-sm font-medium mb-1">Product Images (URLs)</label>
+             <div className="space-y-2">
+                 {imageUrls.map((url, index) => (
+                     <div key={index} className="flex gap-2">
+                         <input
+                             type="url"
+                             value={url}
+                             onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                             className="flex-1 border p-2 rounded"
+                         />
+                         <button type="button" onClick={() => removeImageUrl(index)} className="text-red-500">×</button>
+                     </div>
+                 ))}
+                 <button type="button" onClick={addImageUrl} className="text-sm text-blue-600">+ Add URL</button>
+             </div>
+          </div>
+
+          {/* Builder UI (Same as previous) */}
+          {formData.is_customizable && (
+            <div className="mt-6 border-t pt-6 space-y-6">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Customization Heading</label>
+                    <input type="text" value={customConfig.heading} onChange={(e) => setCustomConfig({...customConfig, heading: e.target.value})} className="w-full border p-2 rounded"/>
                 </div>
-            </div>
 
-            {formData.is_customizable && (
-                <div className="space-y-8">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Customization Heading</label>
-                        <input type="text" value={customConfig.heading} onChange={(e) => setCustomConfig({...customConfig, heading: e.target.value})} className="w-full border p-2 rounded bg-white"/>
+                <div className="space-y-4">
+                    <div className="flex justify-between">
+                        <h3 className="font-medium">Text/File Inputs</h3>
+                        <button type="button" onClick={addInput} className="text-sm bg-gray-100 px-2 py-1 rounded">+ Add</button>
                     </div>
+                    {customConfig.inputs.map((input, index) => (
+                        <div key={input.id} className="flex gap-4 items-center bg-gray-50 p-2 rounded">
+                            <input type="text" value={input.label} onChange={(e) => updateInput(index, 'label', e.target.value)} className="flex-1 border p-1" />
+                            <select value={input.type} onChange={(e) => updateInput(index, 'type', e.target.value)} className="border p-1">
+                                <option value="text">Text</option>
+                                <option value="file">File</option>
+                            </select>
+                            <button type="button" onClick={() => removeInput(index)} className="text-red-500">×</button>
+                        </div>
+                    ))}
+                </div>
 
-                    {/* Inputs */}
-                    <div className="bg-white p-4 rounded border shadow-sm">
-                        <h3 className="font-bold text-md mb-4 flex justify-between items-center">
-                            <span>1. User Inputs</span>
-                            <div className="space-x-2">
-                                <button type="button" onClick={() => addInput('text')} className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">+ Text Box</button>
-                                <button type="button" onClick={() => addInput('file')} className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded">+ File Upload</button>
+                <div className="space-y-4">
+                    <div className="flex justify-between">
+                        <h3 className="font-medium">Visual Options</h3>
+                        <button type="button" onClick={addVisualGroup} className="text-sm bg-gray-100 px-2 py-1 rounded">+ Group</button>
+                    </div>
+                    {customConfig.visualOptions.map((group, gIndex) => (
+                        <div key={group.id} className="border p-4 rounded">
+                            <input type="text" value={group.name} onChange={(e) => updateVisualGroup(gIndex, 'name', e.target.value)} className="w-full font-bold mb-2 border-b" />
+                            <div className="pl-4 border-l-2 space-y-2">
+                                {group.choices.map((choice, cIndex) => (
+                                    <div key={cIndex} className="grid grid-cols-3 gap-2">
+                                        <input type="text" value={choice.label} onChange={(e) => updateChoice(gIndex, cIndex, 'label', e.target.value)} className="border p-1" />
+                                        <input type="text" value={choice.imageUrl} onChange={(e) => updateChoice(gIndex, cIndex, 'imageUrl', e.target.value)} placeholder="Image URL" className="border p-1" />
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => addChoiceToGroup(gIndex)} className="text-sm text-blue-600 underline">+ Add Choice</button>
                             </div>
-                        </h3>
-                        {customConfig.inputs.length === 0 && <p className="text-sm text-gray-500 italic">No inputs defined.</p>}
-                        <div className="space-y-3">
-                            {customConfig.inputs.map((input, i) => (
-                                <div key={i} className="flex items-center gap-3 bg-gray-50 p-3 rounded border">
-                                    <span className="text-xs font-mono uppercase bg-gray-200 px-1 rounded">{input.type}</span>
-                                    <input type="text" value={input.label} onChange={(e) => updateInput(i, 'label', e.target.value)} className="flex-1 border p-1 rounded text-sm" placeholder="Label"/>
-                                    <label className="flex items-center text-sm">
-                                        <input type="checkbox" checked={input.required} onChange={(e) => updateInput(i, 'required', e.target.checked)} className="mr-1"/> Required
-                                    </label>
-                                    <button type="button" onClick={() => removeInput(i)} className="text-red-500 hover:text-red-700">×</button>
-                                </div>
-                            ))}
                         </div>
-                    </div>
-
-                     {/* Visual Options */}
-                     <div className="bg-white p-4 rounded border shadow-sm">
-                        <h3 className="font-bold text-md mb-4 flex justify-between items-center">
-                            <span>2. Visual Options</span>
-                            <button type="button" onClick={addVisualGroup} className="px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800">+ Add Option Group</button>
-                        </h3>
-                        
-                        {customConfig.visualOptions.length === 0 && <p className="text-sm text-gray-500 italic">No visual options defined.</p>}
-
-                        <div className="space-y-6">
-                            {customConfig.visualOptions.map((group, gIndex) => (
-                                <div key={group.id} className="border-2 border-gray-200 rounded-lg p-4 relative bg-gray-50">
-                                    <button type="button" onClick={() => removeVisualGroup(gIndex)} className="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold">Delete Group</button>
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-bold mb-1">Group Name</label>
-                                        <input type="text" value={group.name} onChange={(e) => {
-                                             const newGroups = [...customConfig.visualOptions]; newGroups[gIndex].name = e.target.value; setCustomConfig({...customConfig, visualOptions: newGroups});
-                                        }} className="w-full md:w-1/2 border p-2 rounded bg-white"/>
-                                    </div>
-
-                                    <div className="space-y-3 pl-4 border-l-4 border-gray-300">
-                                        {group.choices.map((choice, cIndex) => (
-                                            <div key={cIndex} className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end bg-white p-3 rounded border shadow-sm relative">
-                                                 <button type="button" onClick={() => removeChoice(gIndex, cIndex)} className="absolute -top-2 -right-2 bg-red-100 text-red-500 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-200">×</button>
-                                                <div>
-                                                    <label className="block text-xs text-gray-500">Choice Label</label>
-                                                    <input type="text" value={choice.label} onChange={(e) => updateChoice(gIndex, cIndex, 'label', e.target.value)} className="w-full border p-1 rounded text-sm"/>
-                                                </div>
-                                                <div>
-                                                     <label className="block text-xs text-gray-500">ID (Fixed)</label>
-                                                    <input type="text" value={choice.value} readOnly className="w-full border p-1 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed"/>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-blue-600">Preview Image URL</label>
-                                                    <input type="text" value={choice.imageUrl} onChange={(e) => updateChoice(gIndex, cIndex, 'imageUrl', e.target.value)} placeholder="https://..." className="w-full border p-1 rounded text-sm bg-blue-50"/>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={() => addChoiceToGroup(gIndex)} className="text-sm text-blue-600 underline font-bold">+ Add Choice</button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    ))}
                 </div>
-            )}
+            </div>
+          )}
+
         </div>
 
         {/* Buttons */}

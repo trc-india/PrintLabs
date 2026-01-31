@@ -36,7 +36,6 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(false)
   
   // Basic Form State
-  // REVERTED: imageUrls is now string[] for manual entry
   const [imageUrls, setImageUrls] = useState<string[]>(['']) 
   
   const [formData, setFormData] = useState({
@@ -45,6 +44,7 @@ export default function NewProductPage() {
     category_id: '',
     description: '',
     base_price: '',
+    tags: '', // <--- NEW: State for Tags (String format for input)
     is_customizable: false,
     production_time_hours: 24,
     status: 'active',
@@ -80,7 +80,7 @@ export default function NewProductPage() {
     setFormData({ ...formData, name, slug })
   }
 
-  // --- REVERTED: Image URL Management ---
+  // --- Image URL Management ---
   const handleImageUrlChange = (index: number, value: string) => {
     const newUrls = [...imageUrls]
     newUrls[index] = value
@@ -140,20 +140,19 @@ export default function NewProductPage() {
     setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
 
-const addChoiceToGroup = (groupIndex: number) => {
+  const addChoiceToGroup = (groupIndex: number) => {
     const newGroups = [...customConfig.visualOptions]
     
-    // ⬇️ FIXED: Generate a unique ID so choices don't collide
+    // Generate Unique ID
     const uniqueId = `choice_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`
 
     newGroups[groupIndex].choices.push({
         label: 'New Choice',
-        value: uniqueId,  
+        value: uniqueId,
         imageUrl: ''
     })
     setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
-
 
   const updateChoice = (groupIndex: number, choiceIndex: number, field: keyof VisualChoice, value: string) => {
     const newGroups = [...customConfig.visualOptions]
@@ -170,9 +169,16 @@ const addChoiceToGroup = (groupIndex: number) => {
     setLoading(true)
 
     try {
+      // Convert comma-separated tags to Array
+      const tagsArray = formData.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag !== '')
+
       const payload = {
         ...formData,
-        imageUrls: imageUrls.filter(url => url.trim() !== ''), // Clean empty strings
+        tags: tagsArray, // <--- Sending Array to backend
+        imageUrls: imageUrls.filter(url => url.trim() !== ''),
         customization_config: formData.is_customizable ? customConfig : null
       }
 
@@ -254,7 +260,25 @@ const addChoiceToGroup = (groupIndex: number) => {
             </div>
           </div>
 
-          {/* REVERTED: Image URL Inputs */}
+          {/* --- NEW TAGS INPUT --- */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+                Tags (Comma separated)
+            </label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              placeholder="gift, couple, best-seller"
+              className="w-full border p-2 rounded focus:ring-2 focus:ring-black focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+                Used for filtering (e.g., "Gifts under 500", "Diwali Special").
+            </p>
+          </div>
+          {/* ---------------------- */}
+
+          {/* Image URL Inputs */}
           <div>
             <label className="block text-sm font-medium mb-1">Product Images (URLs)</label>
             <div className="space-y-2">

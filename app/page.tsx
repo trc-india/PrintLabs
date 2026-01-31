@@ -195,6 +195,7 @@ export default async function HomePage() {
                 <li><Link href="/about" className="hover:text-white">About Us</Link></li>
                 <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
                 <li><Link href="/terms" className="hover:text-white">Terms</Link></li>
+                <li><Link href="/admin" className="hover:text-white">Admin</Link></li>
               </ul>
             </div>
             <div>
