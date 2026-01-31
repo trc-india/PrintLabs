@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Image from 'next/image'
+import DeleteButton from '@/components/delete-button'
 
 export default async function ProductsPage() {
   // Fetch all products with their categories and images
@@ -43,39 +44,28 @@ export default async function ProductsPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-2xl font-bold">Products</h2>
-            <p className="text-gray-600">Manage your product catalog</p>
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Products</h2>
           <Link
             href="/admin/products/new"
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+            className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800"
           >
-            + Add Product
+            Add New Product
           </Link>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            Error loading products: {error.message}
-          </div>
-        )}
-
-        {products && products.length === 0 && (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <p className="text-gray-500 text-lg mb-4">No products yet</p>
+        {!products || products.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow">
+            <p className="text-gray-500 mb-4">No products found</p>
             <Link
               href="/admin/products/new"
-              className="inline-block px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800"
+              className="text-black font-semibold hover:underline"
             >
-              Create Your First Product
+              Create your first product
             </Link>
           </div>
-        )}
-
-        {products && products.length > 0 && (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
+        ) : (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -86,7 +76,7 @@ export default async function ProductsPage() {
                     Category
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Base Price
+                    Price
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -98,39 +88,34 @@ export default async function ProductsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {products.map((product) => {
-                  // Get cover image (first image with sort_order 0)
-                  const coverImage = product.product_images?.find(
-                    (img: any) => img.sort_order === 0
-                  ) || product.product_images?.[0]
-
+                  const mainImage = product.product_images?.[0]?.image_url
                   return (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {/* Product Image Thumbnail */}
-                          {coverImage ? (
-                            <div className="relative w-12 h-12 flex-shrink-0">
+                    <tr key={product.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 flex-shrink-0 relative">
+                            {mainImage ? (
                               <Image
-                                src={coverImage.image_url}
+                                src={mainImage}
                                 alt={product.name}
                                 fill
                                 className="object-cover rounded"
                               />
+                            ) : (
+                              <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center">
+                                <span className="text-xs text-gray-500">No img</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {product.name}
                             </div>
-                          ) : (
-                            <div className="w-12 h-12 flex-shrink-0 bg-gray-200 rounded flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">No img</span>
-                            </div>
-                          )}
-                          {/* Product Name */}
-                          <div>
-                            <div className="font-medium text-gray-900">{product.name}</div>
-                            <div className="text-sm text-gray-500">{product.slug}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {product.categories?.name || 'No category'}
+                        {product.categories?.name}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         ₹{product.base_price}
@@ -150,14 +135,12 @@ export default async function ProductsPage() {
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <Link
-                          href={`/admin/products/${product.id}/edit`}
+                          href={`/admin/products/${product.id}`}
                           className="text-black hover:text-gray-700 mr-4"
                         >
                           Edit
                         </Link>
-                        <button className="text-red-600 hover:text-red-800">
-                          Delete
-                        </button>
+                        <DeleteButton id={product.id} endpoint="products" />
                       </td>
                     </tr>
                   )
