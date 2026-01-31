@@ -8,6 +8,27 @@ import Navbar from '@/components/navbar'
 export default function CartPage() {
   const { items, itemCount, totalAmount, updateQuantity, removeItem } = useCart()
 
+  // --- NEW: Helper to detect links vs text ---
+  const renderCustomValue = (value: string) => {
+    if (typeof value === 'string' && value.startsWith('http')) {
+      return (
+        <a 
+          href={value} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 underline hover:text-blue-800 flex items-center gap-1"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          </svg>
+          View Uploaded File
+        </a>
+      )
+    }
+    return <span>{value}</span>
+  }
+  // -------------------------------------------
+
   if (itemCount === 0) {
     return (
       <div className="min-h-screen bg-white">
@@ -40,79 +61,69 @@ export default function CartPage() {
         <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Cart Items */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Cart Items List */}
+          <div className="lg:col-span-2 space-y-8">
             {items.map((item) => (
-              <div key={item.cartItemId} className="flex gap-6 p-4 bg-gray-50 rounded-lg">
-                {/* Image */}
-                <div className="h-24 w-24 relative flex-shrink-0 bg-white rounded-md overflow-hidden border">
-                  {item.imageUrl ? (
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.productName}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-xs">
-                      No Image
-                    </div>
-                  )}
+              <div key={item.cartItemId} className="flex gap-6 p-4 border rounded-lg bg-white shadow-sm">
+                {/* Product Image */}
+                <div className="w-24 h-24 relative flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
+                   {item.imageUrl ? (
+                      <Image 
+                        src={item.imageUrl} 
+                        alt={item.productName} 
+                        fill 
+                        className="object-cover"
+                      />
+                   ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">No Img</div>
+                   )}
                 </div>
 
                 {/* Details */}
                 <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900">
-                        <Link href={`/products/${item.productSlug}`} className="hover:underline">
-                          {item.productName}
-                        </Link>
-                      </h3>
-                      <p className="text-gray-600">₹{item.price}</p>
-                      
-                      {/* --- CUSTOMIZATION DISPLAY START --- */}
-                      {item.customization && (
-                        <div className="mt-2 text-sm bg-white p-2 rounded border border-gray-200 text-gray-700">
-                           {Object.entries(item.customization).map(([key, value]) => (
-                             <div key={key} className="flex gap-1">
-                               <span className="font-medium text-gray-900 capitalize">
-                                 {key.replace(/_/g, ' ')}:
-                               </span>
-                               <span>{String(value)}</span>
-                             </div>
-                           ))}
-                        </div>
-                      )}
-                      {/* --- CUSTOMIZATION DISPLAY END --- */}
-
-                    </div>
-                    <button
+                  <div className="flex justify-between mb-2">
+                    <h3 className="font-semibold text-lg">
+                      <Link href={`/products/${item.productSlug}`} className="hover:underline">
+                        {item.productName}
+                      </Link>
+                    </h3>
+                    <button 
                       onClick={() => removeItem(item.cartItemId)}
-                      className="text-red-500 hover:text-red-700 text-sm"
+                      className="text-gray-400 hover:text-red-500"
                     >
-                      Remove
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-4 mt-4">
-                    <div className="flex items-center border rounded bg-white">
-                      <button
+                  {/* Customization Details (UPDATED) */}
+                  {item.customization && Array.isArray(item.customization) && (
+                    <div className="mb-3 space-y-1 bg-gray-50 p-2 rounded text-sm">
+                       {item.customization.map((c: any, i: number) => (
+                         <div key={i} className="flex flex-col sm:flex-row sm:gap-2 text-gray-600">
+                            <span className="font-medium text-gray-900">{c.label}:</span>
+                            {/* Use the new helper here */}
+                            {renderCustomValue(c.value)}
+                         </div>
+                       ))}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center mt-4">
+                    <div className="flex items-center border rounded-md">
+                      <button 
                         onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                         className="px-3 py-1 hover:bg-gray-100"
-                      >
-                        -
-                      </button>
-                      <span className="px-3 py-1 text-sm">{item.quantity}</span>
-                      <button
+                      >−</button>
+                      <span className="px-3 py-1 font-medium">{item.quantity}</span>
+                      <button 
                         onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                         className="px-3 py-1 hover:bg-gray-100"
-                      >
-                        +
-                      </button>
+                      >+</button>
                     </div>
-                    <div className="text-gray-900 font-medium">
-                      Total: ₹{item.price * item.quantity}
+                    <div className="font-bold text-lg">
+                      ₹{item.price * item.quantity}
                     </div>
                   </div>
                 </div>

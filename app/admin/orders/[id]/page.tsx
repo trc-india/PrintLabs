@@ -46,107 +46,121 @@ export default async function AdminOrderDetailPage({
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-bold">PrintLabs Admin</h1>
-            <div className="flex gap-4">
-              <Link href="/admin/orders" className="text-gray-700 hover:text-black">
-                Back to Orders
-              </Link>
-            </div>
+            <h1 className="text-xl font-bold">Order Details</h1>
+            <Link href="/admin/orders" className="text-gray-600 hover:text-black">
+              ← Back to Orders
+            </Link>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Order #{order.order_number}</h2>
-            <p className="text-gray-500">{orderDate}</p>
-          </div>
-          <OrderStatusUpdate orderId={order.id} currentStatus={order.production_status} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Info: Items */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* LEFT COLUMN: Order Items */}
+          <div className="flex-1 space-y-6">
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="px-6 py-4 border-b">
-                <h3 className="text-lg font-bold">Order Items</h3>
+                <h2 className="text-lg font-bold">Order Items</h2>
               </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {order.order_items.map((item: any) => (
-                    <tr key={item.id}>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.product_name || item.products?.name || 'Unknown Product'}
+              <div className="divide-y">
+                {order.order_items.map((item: any) => (
+                  <div key={item.id} className="p-6 flex gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">
+                        {item.product_name || item.products?.name || 'Unknown Product'}
+                      </h3>
+                      
+                      {/* --- UPDATED: Customization Display with File Links --- */}
+                      {item.customization_details && Array.isArray(item.customization_details) && (
+                        <div className="mt-2 bg-gray-50 p-3 rounded text-sm space-y-1">
+                          {item.customization_details.map((detail: any, i: number) => (
+                            <div key={i} className="grid grid-cols-3 gap-2">
+                              <span className="font-medium text-gray-600">{detail.label}:</span>
+                              <span className="col-span-2 break-all">
+                                {typeof detail.value === 'string' && detail.value.startsWith('http') ? (
+                                  <a 
+                                    href={detail.value} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-800 font-medium inline-flex items-center gap-1"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download File
+                                  </a>
+                                ) : (
+                                  detail.value
+                                )}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                        {/* --- THIS SHOWS THE CUSTOM DATA --- */}
-                        {item.customization_details && (
-                          <div className="mt-2 bg-yellow-50 p-2 rounded border border-yellow-200 text-xs font-mono text-yellow-900">
-                            <strong>Customization:</strong>
-                            <pre className="whitespace-pre-wrap mt-1">
-                              {JSON.stringify(item.customization_details, null, 2)}
-                            </pre>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{item.quantity}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">₹{item.unit_price}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        ₹{item.unit_price * item.quantity}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      {/* ----------------------------------------------------- */}
+
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">₹{item.unit_price} x {item.quantity}</div>
+                      <div className="font-bold mt-1">₹{item.total_price}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Status Update Component */}
+            <div className="bg-white rounded-lg shadow p-6">
+               <h2 className="text-lg font-bold mb-4">Production Status</h2>
+               <div className="flex items-center gap-2 mb-4">
+                 <span className="text-gray-600">Current Status:</span>
+                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                    order.production_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    order.production_status === 'delivered' ? 'bg-green-100 text-green-800' :
+                    'bg-blue-100 text-blue-800'
+                 }`}>
+                   {order.production_status.replace('_', ' ').toUpperCase()}
+                 </span>
+               </div>
+               <OrderStatusUpdate orderId={order.id} currentStatus={order.production_status} />
             </div>
           </div>
 
-          {/* Sidebar: Customer & Payment */}
-          <div className="space-y-6">
+          {/* RIGHT COLUMN: Customer Details */}
+          <div className="w-full lg:w-1/3 space-y-6">
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold mb-4">Customer Details</h3>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="text-gray-500">Name</p>
-                  <p className="font-medium">{order.customer_name}</p>
+                  <span className="block text-gray-500">Name</span>
+                  <span className="font-medium">{order.customer_name}</span>
                 </div>
                 <div>
-                  <p className="text-gray-500">Email</p>
-                  <p className="font-medium">{order.customer_email}</p>
+                  <span className="block text-gray-500">Email</span>
+                  <span className="font-medium">{order.customer_email}</span>
                 </div>
                 <div>
-                  <p className="text-gray-500">Phone</p>
-                  <p className="font-medium">{order.customer_phone}</p>
+                  <span className="block text-gray-500">Phone</span>
+                  <span className="font-medium">{order.customer_phone}</span>
                 </div>
                 <div>
-                  <p className="text-gray-500">Shipping Address</p>
-                  <p className="font-medium">
-                    {order.shipping_address},<br/>
-                    {order.shipping_city}, {order.shipping_state} - {order.shipping_pincode}
-                  </p>
+                  <span className="block text-gray-500">Shipping Address</span>
+                  <p className="font-medium mt-1">{order.shipping_address}</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold mb-4">Payment Info</h3>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Method</span>
-                  <span className="font-medium uppercase">{order.payment_method}</span>
+                  <span className="text-gray-600">Method</span>
+                  <span className="font-bold">{order.payment_method || 'COD'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Payment Status</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  <span className="text-gray-600">Status</span>
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                     order.payment_status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {order.payment_status}

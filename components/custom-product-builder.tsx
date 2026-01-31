@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import AddToCartButton from '@/components/add-to-cart-button'
+import { supabase } from '@/lib/supabase/client' // Import Supabase Client
 
 interface CustomProductBuilderProps {
   product: any
@@ -34,6 +35,9 @@ export default function CustomProductBuilder({ product }: CustomProductBuilderPr
   const [selectedOptions, setSelectedOptions] = useState<Record<string, VisualChoice>>({})
   const [currentImage, setCurrentImage] = useState<string>('')
   
+  // New State for Uploading Status (to show spinner while file uploads)
+  const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({})
+
   // Safely extract config (handle cases where it might be null)
   const config = product.customization_config || { inputs: [], visualOptions: [] }
   const inputs: InputField[] = config.inputs || []
@@ -42,181 +46,225 @@ export default function CustomProductBuilder({ product }: CustomProductBuilderPr
   // Initialize Default Image
   useEffect(() => {
     const mainImg = product.product_images?.find((img: any) => img.sort_order === 0)
-    setCurrentImage(mainImg?.image_url || '')
+    if (mainImg) {
+        setCurrentImage(mainImg.image_url)
+    }
   }, [product])
 
-  // --- HANDLERS ---
-
-  // 1. Handle Text/File Inputs
-  const handleInputChange = (fieldId: string, value: string) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [fieldId]: value
-    }))
+  const handleInputChange = (id: string, value: string) => {
+    setFormValues(prev => ({ ...prev, [id]: value }))
   }
 
-  // 2. Handle Visual Option Clicks (The Magic Part)
+  // --- NEW: Handle File Upload for Customers ---
+  const handleFileUpload = async (inputId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+
+    const file = e.target.files[0]
+    
+    // Set uploading state for this specific input
+    setUploadingState(prev => ({ ...prev, [inputId]: true }))
+
+    try {
+        // 1. Generate unique file path: uploads/timestamp_filename
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `uploads/${fileName}` // Keeping uploads in a subfolder
+
+        // 2. Upload to Supabase 'products' bucket (or 'orders' if you prefer)
+        // Note: Ensure your 'products' bucket allows public uploads or create a new public bucket
+        const { error: uploadError } = await supabase.storage
+            .from('products')
+            .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        // 3. Get Public URL
+        const { data } = supabase.storage
+            .from('products')
+            .getPublicUrl(filePath)
+        
+        // 4. Save URL to formValues (just like a text input)
+        handleInputChange(inputId, data.publicUrl)
+
+    } catch (error) {
+        console.error('Upload failed:', error)
+        alert('File upload failed. Please try again.')
+    } finally {
+        setUploadingState(prev => ({ ...prev, [inputId]: false }))
+    }
+  }
+
   const handleOptionSelect = (groupId: string, choice: VisualChoice) => {
-      // A. Update the selection state
-      setSelectedOptions(prev => ({
-          ...prev,
-          [groupId]: choice
-      }))
-
-      // B. SWAP IMAGE LOGIC
-      // If this choice has a specific image URL, switch the main view to it
-      if (choice.imageUrl && choice.imageUrl.trim() !== '') {
-          setCurrentImage(choice.imageUrl)
-      }
+    setSelectedOptions(prev => ({ ...prev, [groupId]: choice }))
+    // If choice has a preview image, update the main image
+    if (choice.imageUrl) {
+        setCurrentImage(choice.imageUrl)
+    }
   }
 
-  // --- VALIDATION ---
+  // Validation
   const isValid = () => {
-      // 1. Check User Inputs
-      const inputsValid = inputs.every(input => {
-          if (!input.required) return true;
-          return formValues[input.id] && formValues[input.id].trim() !== '';
-      })
-
-      // 2. Check Visual Options (User must select 1 from each group)
-      const optionsValid = visualOptions.every(group => {
-          return selectedOptions[group.id] !== undefined;
-      })
-
-      return inputsValid && optionsValid;
+    // Check required inputs
+    for (const input of inputs) {
+        if (input.required && !formValues[input.id]) return false
+    }
+    return true
   }
 
-  // --- PREPARE DATA FOR CART ---
+  // Combine all data for Cart
   const getCustomizationData = () => {
-      // Combine text inputs and selected options into one readable object
-      const data: Record<string, string> = {};
-      
-      // Add Visual Options (e.g. "Material": "Wood")
-      visualOptions.forEach(group => {
-          const selected = selectedOptions[group.id];
-          if (selected) {
-              data[group.name] = selected.label;
-          }
-      });
+    const textData = inputs.map(input => ({
+        label: input.label,
+        value: formValues[input.id]
+    }))
+    
+    const visualData = Object.entries(selectedOptions).map(([groupId, choice]) => {
+        const groupName = visualOptions.find(g => g.id === groupId)?.name || 'Option'
+        return {
+            label: groupName,
+            value: choice.label // Storing the human-readable label (e.g., "Red")
+        }
+    })
 
-      // Add User Inputs (e.g. "Enter Name": "Shardul")
-      inputs.forEach(input => {
-          if (formValues[input.id]) {
-              data[input.label] = formValues[input.id];
-          }
-      });
-
-      return data;
+    return [...textData, ...visualData]
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+      <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
         
-        {/* === LEFT COLUMN: The Visual Stage === */}
-        <div className="sticky top-24 h-fit">
-          <div className="aspect-square relative bg-gray-100 rounded-xl overflow-hidden shadow-lg border border-gray-200">
-            {currentImage ? (
-              <Image
-                src={currentImage}
-                alt={product.name}
-                fill
-                className="object-cover transition-all duration-500 ease-in-out"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-400">
-                No Preview Available
+        {/* LEFT COLUMN: Image Gallery */}
+        <div className="flex flex-col-reverse">
+           <div className="mt-6 w-full max-w-2xl mx-auto block lg:max-w-none">
+              <div className="grid grid-cols-4 gap-6">
+                {product.product_images?.map((img: any) => (
+                    <button 
+                        key={img.image_url}
+                        onClick={() => setCurrentImage(img.image_url)}
+                        className={`relative h-24 bg-white rounded-md flex items-center justify-center text-sm font-medium uppercase text-gray-900 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring focus:ring-opacity-50 focus:ring-offset-4 ${currentImage === img.image_url ? 'ring ring-black' : ''}`}
+                    >
+                        <Image src={img.image_url} alt="" fill className="object-cover rounded-md" />
+                    </button>
+                ))}
               </div>
-            )}
-          </div>
-          
-          {/* Standard Gallery Thumbnails */}
-          <div className="grid grid-cols-5 gap-2 mt-4">
-            {product.product_images?.map((img: any, i: number) => (
-              <button
-                key={i}
-                onClick={() => setCurrentImage(img.image_url)}
-                className={`aspect-square relative rounded-md overflow-hidden border-2 transition ${
-                  currentImage === img.image_url ? 'border-black ring-2 ring-black ring-offset-1' : 'border-transparent hover:border-gray-300'
-                }`}
-              >
-                <Image src={img.image_url} alt="" fill className="object-cover" />
-              </button>
-            ))}
-          </div>
+           </div>
+           
+           <div className="w-full aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
+                {currentImage && (
+                    <Image 
+                        src={currentImage} 
+                        alt={product.name} 
+                        fill 
+                        className="object-cover object-center"
+                        priority
+                    />
+                )}
+           </div>
         </div>
 
-        {/* === RIGHT COLUMN: The Control Panel === */}
-        <div className="space-y-8">
-          <div className="border-b pb-6">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
-            <p className="text-2xl font-medium text-gray-900">₹{product.base_price}</p>
-            <p className="text-gray-600 mt-4 leading-relaxed">{product.description}</p>
+        {/* RIGHT COLUMN: Customization Controls */}
+        <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{product.name}</h1>
+          <div className="mt-3">
+             <p className="text-3xl text-gray-900">₹{product.base_price}</p>
+          </div>
+          <div className="mt-6">
+             <h3 className="sr-only">Description</h3>
+             <div className="text-base text-gray-700 space-y-6" dangerouslySetInnerHTML={{ __html: product.description }} />
           </div>
 
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-8">
-            <h3 className="font-bold text-xl text-gray-900">
-              {config.heading || 'Customize Your Order'}
-            </h3>
-
-            {/* 1. VISUAL OPTIONS (Materials, Colors, etc.) */}
-            {visualOptions.map((group) => (
-                <div key={group.id}>
-                    <label className="block text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">
-                        {group.name}
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {group.choices.map((choice) => {
-                            const isSelected = selectedOptions[group.id]?.value === choice.value;
-                            return (
+          <div className="mt-10 border-t pt-10">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">{config.heading || 'Customize Product'}</h2>
+            
+            {/* Visual Options (Colors, etc.) */}
+            <div className="space-y-8 mb-8">
+                {visualOptions.map((group) => (
+                    <div key={group.id}>
+                        <h3 className="text-sm font-medium text-gray-900 mb-4">{group.name}</h3>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                            {group.choices.map((choice) => (
                                 <button
                                     key={choice.value}
                                     onClick={() => handleOptionSelect(group.id, choice)}
-                                    className={`py-3 px-4 rounded-lg text-sm font-medium border-2 transition-all duration-200 ${
-                                        isSelected
-                                            ? 'border-black bg-black text-white shadow-md transform scale-105'
-                                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-400 hover:shadow-sm'
-                                    }`}
+                                    className={`
+                                        border rounded-lg p-2 text-center transition hover:border-black
+                                        ${selectedOptions[group.id]?.value === choice.value ? 'border-2 border-black bg-gray-50' : 'border-gray-200'}
+                                    `}
                                 >
-                                    {choice.label}
+                                    {choice.imageUrl && (
+                                        <div className="relative w-full aspect-square mb-2 rounded overflow-hidden bg-gray-100">
+                                            <Image src={choice.imageUrl} alt={choice.label} fill className="object-cover" />
+                                        </div>
+                                    )}
+                                    <span className="text-sm block">{choice.label}</span>
                                 </button>
-                            )
-                        })}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            ))}
+                ))}
+            </div>
 
-            {visualOptions.length > 0 && inputs.length > 0 && <hr className="border-gray-200" />}
-
-            {/* 2. USER INPUTS (Text, Files) */}
+            {/* Inputs (Text & Files) */}
             {inputs.map((input) => (
-              <div key={input.id}>
-                <label className="block text-sm font-bold text-gray-900 mb-2">
-                  {input.label} {input.required && <span className="text-red-500">*</span>}
+              <div key={input.id} className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {input.label} {input.required && <span className="text-red-500">*</span>}
                 </label>
                 
                 {input.type === 'text' ? (
-                  <input
-                    type="text"
-                    placeholder="Type here..."
-                    value={formValues[input.id] || ''}
-                    onChange={(e) => handleInputChange(input.id, e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition shadow-sm"
-                  />
+                    <input 
+                     type="text"
+                     value={formValues[input.id] || ''}
+                     onChange={(e) => handleInputChange(input.id, e.target.value)}
+                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                     placeholder="Type here..."
+                    />
                 ) : (
-                   <div className="relative">
-                       {/* Basic File Input Placeholder - In real app, consider Dropzone */}
-                       <input
-                        type="text"
-                        placeholder="Paste link to file (Google Drive/Dropbox)"
-                        value={formValues[input.id] || ''}
-                        onChange={(e) => handleInputChange(input.id, e.target.value)}
-                         className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition shadow-sm"
-                       />
-                       <p className="text-xs text-gray-500 mt-1">
-                           *For custom uploads, please paste a Google Drive link for now.
-                       </p>
-                   </div>
+                    // --- CHANGED: FILE UPLOAD UI ---
+                    <div className="space-y-2">
+                        {formValues[input.id] ? (
+                            // Show preview if file uploaded
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <span className="text-green-600">✓</span>
+                                    <a href={formValues[input.id]} target="_blank" rel="noreferrer" className="text-sm text-green-700 underline truncate">
+                                        View Uploaded File
+                                    </a>
+                                </div>
+                                <button 
+                                    onClick={() => handleInputChange(input.id, '')}
+                                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        ) : (
+                            // Show File Input
+                            <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:bg-gray-50 transition text-center cursor-pointer">
+                                <input 
+                                    type="file" 
+                                    onChange={(e) => handleFileUpload(input.id, e)}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                    accept="image/*,.pdf,.ai,.dxf"
+                                />
+                                {uploadingState[input.id] ? (
+                                    <div className="text-gray-500 font-medium animate-pulse">Uploading...</div>
+                                ) : (
+                                    <div className="space-y-1 pointer-events-none">
+                                        <svg className="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        <p className="text-sm text-gray-600">
+                                            Click to upload or drag and drop
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            PNG, JPG, PDF up to 10MB
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 )}
               </div>
             ))}
@@ -226,17 +274,17 @@ export default function CustomProductBuilder({ product }: CustomProductBuilderPr
           <div className="pt-2">
              <AddToCartButton 
                 product={product} 
-                customization={getCustomizationData()} // <--- Passing the combined data
+                customization={getCustomizationData()}
                 disabled={!isValid()} 
              />
              {!isValid() && (
                  <p className="text-center text-sm text-red-500 mt-3 bg-red-50 py-2 rounded">
-                     Please select all options to proceed
+                     Please fill all required fields to proceed
                  </p>
              )}
           </div>
           
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 py-3 rounded-lg">
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 py-3 rounded-lg mt-4">
              <span>⚡ Production time: <strong>{product.production_time_hours} Hours</strong></span>
           </div>
         </div>
