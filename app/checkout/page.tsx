@@ -71,8 +71,10 @@ export default function CheckoutPage() {
 
       clearCart()
       
-      // --- FIX IS HERE: Changed orderId to order_id ---
-      router.push(`/order-success?id=${result.order_id}`)
+      // --- FIX IS HERE ---
+      // 1. We use 'order_number' (e.g. PL1234) instead of 'order_id' (UUID)
+      // 2. We use the parameter name 'order' to match the Success Page
+      router.push(`/order-success?order=${result.order_number}`)
 
     } catch (err: any) {
       console.error(err)
