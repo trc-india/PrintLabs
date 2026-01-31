@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { CartProvider } from '@/lib/cart-context'
+import Navbar from '@/components/navbar' // Import Navbar
+import Footer from '@/components/footer' // Import Footer
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,10 +19,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      {/* ADD suppressHydrationWarning HERE 👇 */}
       <body className={inter.className} suppressHydrationWarning={true}>
         <CartProvider>
-          {children}
+          {/* Navbar sits at the top of every page */}
+          <Navbar /> 
+          
+          {/* Main content changes per page */}
+          <main className="min-h-screen">
+            {children}
+          </main>
+
+          {/* Footer sits at the bottom of every page */}
+          <Footer />
         </CartProvider>
       </body>
     </html>

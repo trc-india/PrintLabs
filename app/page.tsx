@@ -4,214 +4,225 @@ import Image from 'next/image'
 
 export const dynamic = 'force-dynamic' 
 
-export default async function HomePage() {
-  // Fetch active categories
-  const { data: categories } = await supabaseAdmin
-    .from('categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order', { ascending: true })
+// --- 1. HERO BANNER ---
+async function HeroBanner() {
+    const { data: banners } = await supabaseAdmin
+        .from('banners')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
 
-  // Fetch active products
-  const { data: products } = await supabaseAdmin
-    .from('products')
-    .select(`
-      *,
-      product_images (
-        image_url,
-        sort_order
-      )
-    `)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
+    if (!banners || banners.length === 0) return null
+    const banner = banners[0] 
 
-  return (
-    <div className="min-h-screen bg-white">
-      {/* Top Navigation Bar */}
-      <nav className="border-b bg-white sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link href="/" className="text-2xl font-bold text-black">
-              PrintLabs
+    return (
+        <div className="relative w-full h-[120px] sm:h-[160px] md:h-[200px] bg-gray-50">
+            <Link href={banner.link_url || '#'}>
+                <Image src={banner.image_url} alt={banner.title} fill className="object-cover object-center" priority />
             </Link>
-
-            {/* Menu Items */}
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="/" className="text-gray-700 hover:text-black font-medium">
-                Home
-              </Link>
-              <Link href="/products" className="text-gray-700 hover:text-black font-medium">
-                Products
-              </Link>
-              <Link href="/categories" className="text-gray-700 hover:text-black font-medium">
-                Categories
-              </Link>
-              <Link href="/custom" className="text-gray-700 hover:text-black font-medium">
-                Custom Order
-              </Link>
-              <Link href="/about" className="text-gray-700 hover:text-black font-medium">
-                About
-              </Link>
-            </div>
-
-            {/* Right Side - User & Cart */}
-            <div className="flex items-center gap-4">
-              {/* User Icon */}
-              <button className="p-2 hover:bg-gray-100 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </button>
-
-              {/* Cart Button */}
-              <Link
-                href="/cart"
-                className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span>Cart (0)</span>
-              </Link>
-            </div>
-          </div>
         </div>
-      </nav>
+    )
+}
 
-      {/* Banner - 728x90 Placeholder */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-white">
-            <h1 className="text-4xl font-bold mb-2">Custom Laser Cutting & 3D Printing</h1>
-            <p className="text-xl">Personalized Products | Fast Delivery | Premium Quality</p>
-          </div>
+// --- 2. CATEGORY BAR ---
+function CategoryBar({ categories }: { categories: any[] }) {
+  return (
+    <div className="border-b border-gray-200 bg-white sticky top-16 z-40 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-4 py-3 overflow-x-auto no-scrollbar">
+            <Link href="/categories" className="flex-shrink-0 px-4 py-1.5 bg-black text-white text-xs font-bold uppercase tracking-wide rounded hover:bg-gray-800 transition">View All</Link>
+            <div className="w-px h-6 bg-gray-300"></div>
+            {categories.map((cat) => (
+                <Link key={cat.id} href={`/products?category=${cat.slug}`} className="flex-shrink-0 text-sm font-semibold text-gray-700 hover:text-black hover:bg-gray-100 px-3 py-1.5 rounded transition whitespace-nowrap">
+                    {cat.name}
+                </Link>
+            ))}
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Categories - Horizontal Row */}
-      <section className="border-b bg-gray-50 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Explore Categories</h2>
-            <Link href="/categories" className="text-sm text-gray-600 hover:text-black">
-              View All →
-            </Link>
-          </div>
-          
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {categories && categories.map((category) => (
-              <Link
-                key={category.id}
-                href={`/products?category=${category.slug}`}
-                className="flex-shrink-0 px-6 py-3 bg-white border border-gray-300 rounded-full hover:border-black hover:bg-gray-50 transition font-medium"
-              >
-                {category.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+// --- 3. DYNAMIC SECTION ENGINE ---
+async function DynamicSection({ section }: { section: any }) {
+    let products: any[] = []
 
-      {/* Products Grid */}
-      <section className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold mb-8">Our Products</h2>
+    // --- FETCHING LOGIC BASED ON SOURCE TYPE ---
+    if (section.source_type === 'category' && section.data_source_id) {
+        // Fetch by Category
+        const { data } = await supabaseAdmin
+            .from('products')
+            .select('id, name, slug, base_price, product_images(image_url)')
+            .eq('category_id', section.data_source_id)
+            .eq('status', 'active')
+            .limit(8)
+        products = data || []
+    } 
+    else if (section.source_type === 'manual_products' && section.specific_product_ids?.length > 0) {
+        // Fetch Specific IDs
+        const { data } = await supabaseAdmin
+            .from('products')
+            .select('id, name, slug, base_price, product_images(image_url)')
+            .in('id', section.specific_product_ids)
+            .eq('status', 'active')
+        
+        // Preserve the order of IDs if possible (Postgres .in() doesn't guarantee order)
+        // We can re-sort in JS if strictly needed, but roughly okay for now.
+        products = data || []
+    }
+    else if (section.data_source_id) {
+        // Default: Fetch from Group (Collection)
+        const { data } = await supabaseAdmin
+            .from('product_group_items')
+            .select('products (id, name, slug, base_price, product_images (image_url))')
+            .eq('group_id', section.data_source_id)
+            .limit(8)
+        products = data?.map((d: any) => d.products) || []
+    }
 
-          {products && products.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.map((product) => {
-                const coverImage = product.product_images?.find(
-                  (img: any) => img.sort_order === 0
-                ) || product.product_images?.[0]
+    if (products.length === 0) return null
 
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/products/${product.slug}`}
-                    className="group border rounded-lg overflow-hidden hover:shadow-lg transition"
-                  >
-                    {/* Product Image */}
-                    <div className="aspect-square bg-gray-100 relative">
-                      {coverImage ? (
-                        <Image
-                          src={coverImage.image_url}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition duration-300"
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
-                          No image
+    // --- RENDERER ---
+    return (
+        <section className="py-8 border-b border-gray-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-end mb-5">
+                    <h2 className="text-xl font-bold text-gray-900 leading-tight">{section.title}</h2>
+                    {section.data_source_id && section.source_type !== 'manual_products' && (
+                        <Link href={section.source_type === 'category' ? `/products` : `/collections/${section.data_source_id}`} className="text-xs font-bold uppercase tracking-wider text-gray-500 hover:text-black">
+                            View All
+                        </Link>
+                    )}
+                </div>
+
+                {/* LAYOUT SWITCHER */}
+                
+                {/* 1. SCROLL ROW (Netflix Style) */}
+                {section.layout_variant === 'scroll_row' ? (
+                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+                        {products.map(product => (
+                            <div key={product.id} className="w-[160px] sm:w-[200px] flex-shrink-0">
+                                <ProductCard product={product} />
+                            </div>
+                        ))}
+                     </div>
+                ) : 
+                
+                /* 2. FEATURED SPLIT (Big Left) */
+                section.layout_variant === 'featured_split' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group">
+                             <BigCard product={products[0]} />
                         </div>
-                      )}
-                      {product.is_customizable && (
-                        <span className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                          Customizable
-                        </span>
-                      )}
+                        <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {products.slice(1, 7).map((p: any) => <ProductCard key={p.id} product={p} />)}
+                        </div>
                     </div>
+                ) :
 
-                    {/* Product Info */}
-                    <div className="p-4 bg-white">
-                      <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-gray-600">
-                        {product.name}
-                      </h3>
-                      <p className="text-lg font-bold text-black">₹{product.base_price}</p>
+                /* 3. FEATURED SPLIT RIGHT (Big Right) */
+                section.layout_variant === 'featured_split_right' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3 order-2 md:order-1">
+                            {products.slice(1, 7).map((p: any) => <ProductCard key={p.id} product={p} />)}
+                        </div>
+                        <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group order-1 md:order-2">
+                             <BigCard product={products[0]} />
+                        </div>
                     </div>
-                  </Link>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <p>No products available yet</p>
-            </div>
-          )}
-        </div>
-      </section>
+                ) :
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-bold mb-3">PrintLabs</h3>
-              <p className="text-gray-400 text-sm">
-                Custom laser cutting and 3D printing services.
-              </p>
+                /* 4. TWO BIG CARDS */
+                section.layout_variant === 'grid_2_big' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {products.slice(0, 2).map((p: any) => (
+                             <div key={p.id} className="relative h-[250px] sm:h-[350px] bg-gray-100 rounded-lg overflow-hidden group">
+                                <BigCard product={p} />
+                             </div>
+                        ))}
+                    </div>
+                ) :
+
+                /* 5. HIGH DENSITY (6 Cols) */
+                section.layout_variant === 'grid_6' ? (
+                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {products.map((p: any) => <ProductCard key={p.id} product={p} compact />)}
+                     </div>
+                ) :
+
+                /* 6. WIDE GRID (5 Cols) */
+                section.layout_variant === 'grid_5' ? (
+                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        {products.map((p: any) => <ProductCard key={p.id} product={p} />)}
+                     </div>
+                ) :
+
+                /* DEFAULT: STANDARD GRID (4 Cols) */
+                (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {products.map((p: any) => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                )}
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Shop</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/products" className="hover:text-white">All Products</Link></li>
-                <li><Link href="/categories" className="hover:text-white">Categories</Link></li>
-                <li><Link href="/custom" className="hover:text-white">Custom Orders</Link></li>
-              </ul>
+        </section>
+    )
+}
+
+// --- HELPERS ---
+
+function ProductCard({ product, compact }: { product: any, compact?: boolean }) {
+    const img = product.product_images?.[0]?.image_url
+    return (
+        <Link href={`/products/${product.slug}`} className="group block">
+            <div className={`aspect-square relative bg-gray-50 rounded-lg overflow-hidden ${compact ? 'mb-2' : 'mb-3'}`}>
+                {img ? (
+                    <Image src={img} alt={product.name} fill className="object-cover group-hover:scale-105 transition duration-300" />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-300">No Image</div>
+                )}
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/about" className="hover:text-white">About Us</Link></li>
-                <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-                <li><Link href="/terms" className="hover:text-white">Terms</Link></li>
-                <li><Link href="/admin" className="hover:text-white">Admin</Link></li>
-              </ul>
+            <h3 className={`font-medium text-gray-900 truncate ${compact ? 'text-xs' : 'text-sm'}`}>{product.name}</h3>
+            <p className={`font-bold text-gray-900 ${compact ? 'text-xs' : 'text-sm'}`}>₹{product.base_price}</p>
+        </Link>
+    )
+}
+
+function BigCard({ product }: { product: any }) {
+    if (!product) return null
+    const img = product.product_images?.[0]?.image_url
+    return (
+        <Link href={`/products/${product.slug}`} className="block h-full w-full relative">
+            {img && <Image src={img} alt={product.name} fill className="object-cover group-hover:scale-105 transition duration-500" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"></div>
+            <div className="absolute bottom-4 left-4 text-white">
+                <h3 className="text-xl font-bold leading-tight">{product.name}</h3>
+                <p className="font-medium text-lg">₹{product.base_price}</p>
             </div>
-            <div>
-              <h4 className="font-semibold mb-3">Contact</h4>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li>Pune, Maharashtra</li>
-                <li>info@printlabs.com</li>
-                <li>+91-XXXXXXXXXX</li>
-              </ul>
+        </Link>
+    )
+}
+
+// --- MAIN PAGE ---
+export default async function HomePage() {
+  const [{ data: categories }, { data: sections }] = await Promise.all([
+      supabaseAdmin.from('categories').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
+      supabaseAdmin.from('homepage_sections').select('*').eq('is_active', true).neq('section_type', 'banner_slider').order('sort_order', { ascending: true })
+  ])
+
+  return (
+    <div className="min-h-screen bg-white pb-20">
+      <HeroBanner />
+      <CategoryBar categories={categories || []} />
+      <div className="flex flex-col">
+        {sections?.map((section) => (
+            <DynamicSection key={section.id} section={section} />
+        ))}
+        {(!sections || sections.length === 0) && (
+            <div className="py-20 text-center text-gray-400">
+                <p>Add content via Admin &gt; Homepage Layout</p>
             </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-6 text-center text-sm text-gray-400">
-            <p>&copy; 2026 PrintLabs. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+        )}
+      </div>
     </div>
   )
 }

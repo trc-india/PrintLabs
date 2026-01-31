@@ -7,7 +7,7 @@ import Link from 'next/link'
 export default function ManageGroupPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   
-  // 1. State for ID and Data
+  // State
   const [id, setId] = useState<string | null>(null)
   const [group, setGroup] = useState<any>(null)
   const [items, setItems] = useState<any[]>([]) 
@@ -16,17 +16,14 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  // 2. Unwrap Params safely
+  // Unwrap Params
   useEffect(() => {
-    params.then((resolvedParams) => {
-      setId(resolvedParams.id)
-    })
+    params.then((p) => setId(p.id))
   }, [params])
 
-  // 3. Fetch Data once ID is available
+  // Fetch Data
   useEffect(() => {
-    if (!id) return // Wait for ID
-
+    if (!id) return 
     const fetchData = async () => {
       try {
         const [groupRes, productsRes] = await Promise.all([
@@ -34,34 +31,36 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
           fetch('/api/products')
         ])
         
-        if (!groupRes.ok) throw new Error('Group not found')
-
         const groupData = await groupRes.json()
-        const productsData = await productsRes.json()
-
         setGroup(groupData)
         setItems(groupData.products || [])
-        setAllProducts(productsData)
-      } catch (err) {
-        console.error(err)
-        // Optional: Redirect if not found
-        // router.push('/admin/groups') 
-      } finally {
-        setLoading(false)
-      }
+        setAllProducts(await productsRes.json())
+      } catch (err) { console.error(err) } 
+      finally { setLoading(false) }
     }
-    
     fetchData()
   }, [id])
 
-  // --- Handlers ---
+  // Handlers
   const addToGroup = (product: any) => {
     if (items.find(i => i.id === product.id)) return
-    setItems([...items, product])
+    setItems([...items, product]) // Add to end
   }
 
   const removeFromGroup = (productId: string) => {
     setItems(items.filter(i => i.id !== productId))
+  }
+
+  // NEW: REORDER LOGIC
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === items.length - 1) return
+
+    const newItems = [...items]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    ;[newItems[index], newItems[swapIndex]] = [newItems[swapIndex], newItems[index]]
+    
+    setItems(newItems)
   }
 
   const handleSave = async () => {
@@ -74,6 +73,7 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({
           name: group.name,
           description: group.description,
+          // The backend saves them in the order of this array!
           product_ids: items.map(i => i.id) 
         })
       })
@@ -86,17 +86,8 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  // --- Render ---
+  if (loading || !group) return <div>Loading...</div>
 
-  if (loading || !group) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-xl font-semibold text-gray-500">Loading Manager...</div>
-      </div>
-    )
-  }
-
-  // Filter products
   const searchResults = allProducts.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     !items.find(i => i.id === p.id) 
@@ -123,14 +114,14 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
         {/* LEFT: Items currently in this group */}
         <div className="bg-white p-6 rounded-lg shadow h-[600px] flex flex-col">
             <h2 className="font-bold text-lg mb-4 border-b pb-2">
-                Products in Group ({items.length})
+                Products Sequence ({items.length})
             </h2>
             <div className="flex-1 overflow-y-auto space-y-2">
                 {items.length === 0 ? (
-                    <p className="text-gray-400 text-center mt-10">No products yet. Add some from the right.</p>
+                    <p className="text-gray-400 text-center mt-10">No products yet.</p>
                 ) : (
                     items.map((item, index) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg">
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 border rounded-lg group">
                             <div className="flex items-center gap-3">
                                 <span className="bg-gray-200 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold text-gray-600">
                                     {index + 1}
@@ -140,25 +131,28 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
                                     <p className="text-xs text-gray-500">₹{item.base_price}</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => removeFromGroup(item.id)}
-                                className="text-red-500 hover:bg-red-50 p-2 rounded text-sm font-medium"
-                            >
-                                Remove
-                            </button>
+                            
+                            <div className="flex items-center gap-1">
+                                {/* UP/DOWN ARROWS */}
+                                <button onClick={() => moveItem(index, 'up')} disabled={index===0} className="p-1 hover:bg-gray-200 rounded disabled:opacity-30">⬆️</button>
+                                <button onClick={() => moveItem(index, 'down')} disabled={index===items.length-1} className="p-1 hover:bg-gray-200 rounded disabled:opacity-30">⬇️</button>
+                                
+                                <button 
+                                    onClick={() => removeFromGroup(item.id)}
+                                    className="ml-2 text-red-500 hover:bg-red-50 p-1 rounded text-xs"
+                                >
+                                    ×
+                                </button>
+                            </div>
                         </div>
                     ))
                 )}
             </div>
-            <p className="text-xs text-gray-400 mt-4 text-center">
-                * Click "Save Changes" to apply updates
-            </p>
         </div>
 
         {/* RIGHT: Search and Add Products */}
         <div className="bg-white p-6 rounded-lg shadow h-[600px] flex flex-col">
             <h2 className="font-bold text-lg mb-4 border-b pb-2">Add Products</h2>
-            
             <input 
                 type="text"
                 placeholder="Search products..."
@@ -166,11 +160,7 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full border p-2 rounded mb-4 focus:ring-2 focus:ring-black"
             />
-
             <div className="flex-1 overflow-y-auto space-y-2">
-                {searchQuery && searchResults.length === 0 && (
-                    <p className="text-gray-400 text-center mt-4">No matching products found.</p>
-                )}
                 {searchResults.map(product => (
                     <div 
                         key={product.id} 
@@ -181,14 +171,9 @@ export default function ManageGroupPage({ params }: { params: Promise<{ id: stri
                             <p className="font-medium text-sm">{product.name}</p>
                             <p className="text-xs text-gray-500">₹{product.base_price}</p>
                         </div>
-                        <button className="text-blue-600 text-sm font-bold opacity-0 group-hover:opacity-100">
-                            + Add
-                        </button>
+                        <button className="text-blue-600 text-sm font-bold opacity-0 group-hover:opacity-100">+ Add</button>
                     </div>
                 ))}
-                {!searchQuery && (
-                    <p className="text-gray-400 text-center mt-10">Type to search for products...</p>
-                )}
             </div>
         </div>
 
