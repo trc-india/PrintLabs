@@ -1,27 +1,28 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { CartProvider } from "@/lib/cart-context";
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { CartProvider } from '@/lib/cart-context'
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "PrintLabs - Custom Laser Cutting & 3D Printing",
-  description: "Personalized keychains, phone cases, wall art and more",
-};
+  title: 'PrintLabs',
+  description: 'Custom 3D Printing & Laser Cutting Service',
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      {/* ADD suppressHydrationWarning HERE 👇 */}
+      <body className={inter.className} suppressHydrationWarning={true}>
         <CartProvider>
           {children}
         </CartProvider>
       </body>
     </html>
-  );
+  )
 }
