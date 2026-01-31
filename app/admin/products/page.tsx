@@ -3,6 +3,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import DeleteButton from '@/components/delete-button'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ProductsPage() {
   // Fetch all products with their categories and images
   const { data: products, error } = await supabaseAdmin
