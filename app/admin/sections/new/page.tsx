@@ -10,13 +10,14 @@ export default function NewSectionPage() {
   const [categories, setCategories] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
-    section_type: 'product_row', // 'banner_slider' or 'product_row'
+    section_type: 'product_row',
     title: '',
-    source_type: 'group', // 'group' | 'category' | 'manual_products'
+    source_type: 'group', 
     data_source_id: '',
     layout_variant: 'grid_4',
     sort_order: 10,
-    is_active: true
+    is_active: true,
+    settings: { auto_scroll_delay: 3000 } // Default delay
   })
 
   useEffect(() => {
@@ -27,8 +28,6 @@ export default function NewSectionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    
-    // For manual products, we create the section first, then user adds items in "Manage"
     await fetch('/api/sections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,15 +36,16 @@ export default function NewSectionPage() {
     router.push('/admin/sections')
   }
 
-  // --- LAYOUT OPTIONS CONFIG ---
+  // --- UPDATED LAYOUT OPTIONS ---
   const layoutOptions = [
-    { id: 'grid_4', name: 'Standard Grid', desc: '4 items/row', icon: '■ ■ ■ ■' },
-    { id: 'grid_5', name: 'Wide Grid', desc: '5 items/row', icon: '■ ■ ■ ■ ■' },
-    { id: 'grid_6', name: 'High Density', desc: '6 small items', icon: '▫ ▫ ▫ ▫ ▫ ▫' },
-    { id: 'scroll_row', name: 'Scroll Row', desc: 'Netflix style', icon: '➡ ■ ■ ■ ➡' },
-    { id: 'featured_split', name: 'Big Left', desc: '1 Big + Grid', icon: '█ ::' },
-    { id: 'featured_split_right', name: 'Big Right', desc: 'Grid + 1 Big', icon: ':: █' },
-    { id: 'grid_2_big', name: 'Two Big', desc: '2 Huge Cards', icon: '█ █' },
+    { id: 'grid_4', name: 'Standard Grid', icon: '■ ■ ■ ■' },
+    { id: 'grid_5', name: 'Wide Grid', icon: '■ ■ ■ ■ ■' },
+    { id: 'grid_6', name: 'High Density', icon: '▫ ▫ ▫ ▫ ▫ ▫' },
+    { id: 'scroll_row', name: 'Manual Scroll', icon: '➡ ■ ■ ■ ➡' },
+    { id: 'auto_scroll', name: 'Auto Scroll ⚡', icon: '⚡ ■ ■ ■ ⚡' }, // <--- NEW OPTION
+    { id: 'featured_split', name: 'Big Left', icon: '█ ::' },
+    { id: 'featured_split_right', name: 'Big Right', icon: ':: █' },
+    { id: 'grid_2_big', name: 'Two Big', icon: '█ █' },
   ]
 
   return (
@@ -56,71 +56,44 @@ export default function NewSectionPage() {
         
         {/* 1. SECTION TYPE */}
         <div>
-            <label className="block text-sm font-bold mb-2">1. What kind of section?</label>
+            <label className="block text-sm font-bold mb-2">1. Section Type</label>
             <div className="flex gap-4">
-                <button 
-                    type="button"
-                    onClick={() => setFormData({...formData, section_type: 'product_row'})}
-                    className={`flex-1 p-4 border rounded-lg text-center ${formData.section_type === 'product_row' ? 'ring-2 ring-black border-black bg-gray-50' : ''}`}
-                >
-                    🛍️ Product List
-                </button>
-                <button 
-                    type="button"
-                    onClick={() => setFormData({...formData, section_type: 'banner_slider'})}
-                    className={`flex-1 p-4 border rounded-lg text-center ${formData.section_type === 'banner_slider' ? 'ring-2 ring-black border-black bg-gray-50' : ''}`}
-                >
-                    🖼️ Banner Slider
-                </button>
+                <button type="button" onClick={() => setFormData({...formData, section_type: 'product_row'})} className={`flex-1 p-4 border rounded-lg ${formData.section_type === 'product_row' ? 'ring-2 ring-black bg-gray-50' : ''}`}>Product List</button>
+                <button type="button" onClick={() => setFormData({...formData, section_type: 'banner_slider'})} className={`flex-1 p-4 border rounded-lg ${formData.section_type === 'banner_slider' ? 'ring-2 ring-black bg-gray-50' : ''}`}>Banner Slider</button>
             </div>
         </div>
 
         {formData.section_type === 'product_row' && (
             <>
-                {/* 2. CONTENT SOURCE */}
-                <div>
-                    <label className="block text-sm font-bold mb-2">2. Where do products come from?</label>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                         <button type="button" onClick={() => setFormData({...formData, source_type: 'group'})} className={`p-2 border rounded ${formData.source_type === 'group' ? 'bg-black text-white' : ''}`}>Collection (Group)</button>
-                         <button type="button" onClick={() => setFormData({...formData, source_type: 'category'})} className={`p-2 border rounded ${formData.source_type === 'category' ? 'bg-black text-white' : ''}`}>Category</button>
-                         <button type="button" onClick={() => setFormData({...formData, source_type: 'manual_products'})} className={`p-2 border rounded ${formData.source_type === 'manual_products' ? 'bg-black text-white' : ''}`}>Manual Selection</button>
+                {/* 2. SOURCE & TITLE */}
+                <div className="bg-gray-50 p-4 rounded">
+                    <label className="block text-sm font-medium mb-1">Section Title</label>
+                    <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full border p-2 rounded mb-4" />
+
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'group'})} className={`p-2 border rounded text-sm ${formData.source_type === 'group' ? 'bg-black text-white' : 'bg-white'}`}>Collection</button>
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'category'})} className={`p-2 border rounded text-sm ${formData.source_type === 'category' ? 'bg-black text-white' : 'bg-white'}`}>Category</button>
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'manual_products'})} className={`p-2 border rounded text-sm ${formData.source_type === 'manual_products' ? 'bg-black text-white' : 'bg-white'}`}>Manual</button>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded">
-                        <label className="block text-sm font-medium mb-1">Section Title</label>
-                        <input 
-                            type="text" required value={formData.title} 
-                            onChange={e => setFormData({...formData, title: e.target.value})}
-                            placeholder="e.g. Best Sellers"
-                            className="w-full border p-2 rounded mb-4"
-                        />
-
-                        {formData.source_type === 'group' && (
-                            <select required value={formData.data_source_id} onChange={e => setFormData({...formData, data_source_id: e.target.value})} className="w-full border p-2 rounded">
-                                <option value="">-- Select Collection --</option>
-                                {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                            </select>
-                        )}
-
-                        {formData.source_type === 'category' && (
-                            <select required value={formData.data_source_id} onChange={e => setFormData({...formData, data_source_id: e.target.value})} className="w-full border p-2 rounded">
-                                <option value="">-- Select Category --</option>
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                            </select>
-                        )}
-
-                        {formData.source_type === 'manual_products' && (
-                            <div className="text-sm text-blue-600">
-                                ℹ️ You will select specific products in the next step.
-                            </div>
-                        )}
-                    </div>
+                    {formData.source_type === 'group' && (
+                        <select required value={formData.data_source_id} onChange={e => setFormData({...formData, data_source_id: e.target.value})} className="w-full border p-2 rounded">
+                            <option value="">-- Select Collection --</option>
+                            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                    )}
+                    {formData.source_type === 'category' && (
+                        <select required value={formData.data_source_id} onChange={e => setFormData({...formData, data_source_id: e.target.value})} className="w-full border p-2 rounded">
+                            <option value="">-- Select Category --</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                    )}
                 </div>
 
                 {/* 3. LAYOUT STYLE */}
                 <div>
                     <label className="block text-sm font-bold mb-3">3. Layout Style</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {layoutOptions.map(opt => (
                             <button
                                 key={opt.id}
@@ -128,18 +101,42 @@ export default function NewSectionPage() {
                                 onClick={() => setFormData({...formData, layout_variant: opt.id})}
                                 className={`border rounded-lg p-3 text-left hover:bg-gray-50 transition ${formData.layout_variant === opt.id ? 'ring-2 ring-black border-black bg-gray-50' : ''}`}
                             >
-                                <div className="text-lg mb-1 tracking-tighter text-gray-400 font-mono">{opt.icon}</div>
+                                <div className="text-gray-400 font-mono mb-1">{opt.icon}</div>
                                 <span className="text-sm font-bold block">{opt.name}</span>
-                                <span className="text-xs text-gray-500">{opt.desc}</span>
                             </button>
                         ))}
                     </div>
                 </div>
+
+                {/* 4. SETTINGS (Only for Auto Scroll) */}
+                {formData.layout_variant === 'auto_scroll' && (
+                    <div className="mt-4 p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                        <label className="block text-sm font-bold text-blue-800 mb-1">
+                            Auto-Scroll Speed (Milliseconds)
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <input 
+                                type="number" 
+                                value={formData.settings.auto_scroll_delay}
+                                onChange={(e) => setFormData({
+                                    ...formData, 
+                                    settings: { ...formData.settings, auto_scroll_delay: Number(e.target.value) }
+                                })}
+                                className="w-32 border p-2 rounded"
+                                min="1000"
+                                step="500"
+                            />
+                            <span className="text-sm text-blue-600">
+                                (1000ms = 1 second)
+                            </span>
+                        </div>
+                    </div>
+                )}
             </>
         )}
 
         <button type="submit" disabled={loading} className="w-full bg-black text-white py-4 rounded-lg font-bold text-lg">
-            {loading ? 'Creating...' : 'Create Section'}
+            {loading ? 'Adding...' : 'Create Section'}
         </button>
       </form>
     </div>

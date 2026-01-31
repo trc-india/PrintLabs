@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function EditSectionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params) // Unwrap params safely
+  const { id } = use(params)
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -19,6 +19,8 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
     source_type: 'group', 
     data_source_id: '',
     layout_variant: 'grid_4',
+    // New: Settings for extra config like delay
+    settings: { auto_scroll_delay: 3000 }
   })
 
   // Fetch Data
@@ -27,15 +29,12 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
         const [groupsRes, catsRes, sectionRes] = await Promise.all([
             fetch('/api/groups'),
             fetch('/api/categories'),
-            fetch(`/api/sections?id=${id}`) // We filter client-side or assume GET returns all
+            fetch(`/api/sections`) 
         ])
         
         setGroups(await groupsRes.json())
         setCategories(await catsRes.json())
 
-        // Note: Ideally create a specific GET /api/sections/[id] endpoint, 
-        // but for now we can find it from the list or implement the endpoint.
-        // Assuming you haven't made a specific GET by ID yet, let's just fetch all and find.
         const allSections = await sectionRes.json()
         const current = allSections.find((s: any) => s.id === id)
         
@@ -46,6 +45,8 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
                 source_type: current.source_type || 'group',
                 data_source_id: current.data_source_id || '',
                 layout_variant: current.layout_variant || 'grid_4',
+                // Load existing settings or default to 3000
+                settings: current.settings || { auto_scroll_delay: 3000 }
             })
         }
         setLoading(false)
@@ -69,7 +70,8 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
     { id: 'grid_4', name: 'Standard Grid', icon: '■ ■ ■ ■' },
     { id: 'grid_5', name: 'Wide Grid', icon: '■ ■ ■ ■ ■' },
     { id: 'grid_6', name: 'High Density', icon: '▫ ▫ ▫ ▫ ▫ ▫' },
-    { id: 'scroll_row', name: 'Scroll Row', icon: '➡ ■ ■ ■ ➡' },
+    { id: 'scroll_row', name: 'Manual Scroll', icon: '➡ ■ ■ ■ ➡' },
+    { id: 'auto_scroll', name: 'Auto Scroll ⚡', icon: '⚡ ■ ■ ■ ⚡' }, // <--- New Option
     { id: 'featured_split', name: 'Big Left', icon: '█ ::' },
     { id: 'featured_split_right', name: 'Big Right', icon: ':: █' },
     { id: 'grid_2_big', name: 'Two Big', icon: '█ █' },
@@ -90,9 +92,10 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
             <>
                 <div>
                     <label className="block text-sm font-bold mb-2">Content Source</label>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                         <button type="button" onClick={() => setFormData({...formData, source_type: 'group'})} className={`p-2 border rounded ${formData.source_type === 'group' ? 'bg-black text-white' : ''}`}>Collection</button>
-                         <button type="button" onClick={() => setFormData({...formData, source_type: 'category'})} className={`p-2 border rounded ${formData.source_type === 'category' ? 'bg-black text-white' : ''}`}>Category</button>
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'group'})} className={`p-2 border rounded text-sm ${formData.source_type === 'group' ? 'bg-black text-white' : ''}`}>Collection</button>
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'category'})} className={`p-2 border rounded text-sm ${formData.source_type === 'category' ? 'bg-black text-white' : ''}`}>Category</button>
+                         <button type="button" onClick={() => setFormData({...formData, source_type: 'manual_products'})} className={`p-2 border rounded text-sm ${formData.source_type === 'manual_products' ? 'bg-black text-white' : ''}`}>Manual</button>
                     </div>
 
                     <div className="bg-gray-50 p-4 rounded">
@@ -116,6 +119,12 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
                                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         )}
+
+                        {formData.source_type === 'manual_products' && (
+                            <div className="text-sm text-blue-600">
+                                ℹ️ Save this section, then use "Manage Items" on the list page to select products.
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -134,6 +143,31 @@ export default function EditSectionPage({ params }: { params: Promise<{ id: stri
                             </button>
                         ))}
                     </div>
+
+                    {/* NEW: Settings for Auto Scroll */}
+                    {formData.layout_variant === 'auto_scroll' && (
+                        <div className="mt-4 p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                            <label className="block text-sm font-bold text-blue-800 mb-1">
+                                Auto-Scroll Speed (Milliseconds)
+                            </label>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="number" 
+                                    value={formData.settings?.auto_scroll_delay || 3000}
+                                    onChange={(e) => setFormData({
+                                        ...formData, 
+                                        settings: { ...formData.settings, auto_scroll_delay: Number(e.target.value) }
+                                    })}
+                                    className="w-32 border p-2 rounded"
+                                    min="1000"
+                                    step="500"
+                                />
+                                <span className="text-sm text-blue-600">
+                                    (1000ms = 1 second)
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </>
         ) : (

@@ -2,6 +2,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import Link from "next/link";
 import Image from "next/image";
 import ProductScrollRow from "@/components/product-scroll-row";
+import AutoScrollRow from "@/components/auto-scroll-row"; // <--- 1. Import Added
+
 export const dynamic = "force-dynamic";
 
 // --- 1. HERO BANNER ---
@@ -82,9 +84,6 @@ async function DynamicSection({ section }: { section: any }) {
       .select("id, name, slug, base_price, product_images(image_url)")
       .in("id", section.specific_product_ids)
       .eq("status", "active");
-
-    // Preserve the order of IDs if possible (Postgres .in() doesn't guarantee order)
-    // We can re-sort in JS if strictly needed, but roughly okay for now.
     products = data || [];
   } else if (section.data_source_id) {
     // Default: Fetch from Group (Collection)
@@ -124,10 +123,17 @@ async function DynamicSection({ section }: { section: any }) {
         </div>
 
         {/* LAYOUT SWITCHER */}
+        
+        {/* 1A. AUTO SCROLL (New Feature) */}
+        {section.layout_variant === 'auto_scroll' ? (
+             <AutoScrollRow 
+                products={products} 
+                delay={section.settings?.auto_scroll_delay || 3000} 
+             />
+        ) : 
 
-        {/* 1. SCROLL ROW (Netflix Style) */}
-        {/* 1. SCROLL ROW (Netflix Style with Arrows) */}
-        {section.layout_variant === "scroll_row" ? (
+        /* 1B. MANUAL SCROLL (Netflix Style) */
+        section.layout_variant === "scroll_row" ? (
           <ProductScrollRow products={products} />
         ) :
         
