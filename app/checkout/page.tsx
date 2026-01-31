@@ -50,7 +50,7 @@ export default function CheckoutPage() {
         total_amount: totalAmount,
         items: items.map(item => ({
           product_id: item.productId,
-          product_name: item.productName, // Added this back for safety
+          product_name: item.productName,
           quantity: item.quantity,
           price_at_purchase: item.price,
           customization_details: item.customization || null
@@ -70,7 +70,9 @@ export default function CheckoutPage() {
       }
 
       clearCart()
-      router.push(`/order-success?id=${result.orderId}`)
+      
+      // --- FIX IS HERE: Changed orderId to order_id ---
+      router.push(`/order-success?id=${result.order_id}`)
 
     } catch (err: any) {
       console.error(err)
