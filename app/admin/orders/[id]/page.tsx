@@ -86,7 +86,7 @@ export default async function AdminOrderDetailPage({
                     <tr key={item.id}>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {item.products?.name || 'Unknown Product'}
+                          {item.product_name || item.products?.name || 'Unknown Product'}
                         </div>
                         {/* --- THIS SHOWS THE CUSTOM DATA --- */}
                         {item.customization_details && (
@@ -99,9 +99,9 @@ export default async function AdminOrderDetailPage({
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{item.quantity}</td>
-                      <td className="px-6 py-4 text-sm text-gray-500">₹{item.price_at_purchase}</td>
+                      <td className="px-6 py-4 text-sm text-gray-500">₹{item.unit_price}</td>
                       <td className="px-6 py-4 text-sm text-gray-900 font-medium">
-                        ₹{item.price_at_purchase * item.quantity}
+                        ₹{item.unit_price * item.quantity}
                       </td>
                     </tr>
                   ))}

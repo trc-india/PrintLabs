@@ -50,9 +50,9 @@ export default function CheckoutPage() {
         total_amount: totalAmount,
         items: items.map(item => ({
           product_id: item.productId,
+          product_name: item.productName, // Added this back for safety
           quantity: item.quantity,
           price_at_purchase: item.price,
-          // CRITICAL: Passing the customization data here
           customization_details: item.customization || null
         }))
       }

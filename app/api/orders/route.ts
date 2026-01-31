@@ -42,18 +42,15 @@ export async function POST(request: Request) {
 
     if (orderError) throw orderError
 
-    // 2. Create order items (Fixed to match Checkout Payload + Added Customization)
+    // 2. Create order items (FIXED MAPPING)
     const orderItems = items.map((item: any) => ({
       order_id: order.id,
-      product_id: item.product_id,              // Matched with Checkout
+      product_id: item.product_id,
+      product_name: item.product_name || 'Unknown Product', // Save snapshot of name
       quantity: item.quantity,
-      price_at_purchase: item.price_at_purchase,// Matched with Checkout
-      customization_details: item.customization_details, // <--- CRITICAL: Saving the custom data
-      
-      // We calculate total line price here to be safe
-      // (Optional: If your DB has a product_name column, we pass it here if provided, 
-      // otherwise we assume the ID is enough)
-      // product_name: item.product_name || '', 
+      unit_price: item.price_at_purchase, // <--- ERROR WAS HERE: Mapped to correct DB column 'unit_price'
+      total_price: item.price_at_purchase * item.quantity, // Calculated total
+      customization_details: item.customization_details,
     }))
 
     const { error: itemsError } = await supabaseAdmin
@@ -61,7 +58,7 @@ export async function POST(request: Request) {
       .insert(orderItems)
 
     if (itemsError) {
-      // Rollback: delete the order if items insertion fails to prevent "empty" orders
+      // Rollback: delete the order if items insertion fails
       await supabaseAdmin.from('orders').delete().eq('id', order.id)
       throw itemsError
     }
