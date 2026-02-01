@@ -15,11 +15,20 @@ interface AddToCartButtonProps {
       sort_order: number
     }[]
   }
-  customization?: any // New prop to pass user choices
-  disabled?: boolean  // Block click if validation fails
+  customization?: any 
+  disabled?: boolean
+  // NEW: Allow overriding price and quantity from the Builder
+  price?: number 
+  quantity?: number
 }
 
-export default function AddToCartButton({ product, customization, disabled = false }: AddToCartButtonProps) {
+export default function AddToCartButton({ 
+  product, 
+  customization, 
+  disabled = false,
+  price, // Received calculated price
+  quantity = 1 // Received calculated quantity
+}: AddToCartButtonProps) {
   const { addItem } = useCart()
   const [added, setAdded] = useState(false)
 
@@ -34,9 +43,11 @@ export default function AddToCartButton({ product, customization, disabled = fal
       productId: product.id,
       productName: product.name,
       productSlug: product.slug,
-      price: product.base_price,
+      // Use the calculated price if provided, otherwise base price
+      price: price || product.base_price, 
       imageUrl: coverImage?.image_url || '',
-      customization: customization || null, // Pass the data to context
+      customization: customization || null,
+      quantity: quantity // Use the specific quantity
     })
 
     setAdded(true)
@@ -52,11 +63,11 @@ export default function AddToCartButton({ product, customization, disabled = fal
           added
             ? 'bg-green-600 text-white'
             : disabled 
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-black text-white hover:bg-gray-800'
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-black text-white hover:bg-gray-800'
         }`}
       >
-        {added ? '✓ Added to Cart!' : 'Add to Cart'}
+        {added ? 'Added to Cart! ✓' : `Add to Cart - ₹${(price || product.base_price) * quantity}`}
       </button>
     </div>
   )

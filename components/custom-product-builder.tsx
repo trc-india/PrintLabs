@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import AddToCartButton from '@/components/add-to-cart-button'
-import { supabase } from '@/lib/supabase/client' // Import Supabase Client
+import { supabase } from '@/lib/supabase/client' 
 
 interface CustomProductBuilderProps {
   product: any
 }
 
-// Types matching the Admin structure
+// --- Types ---
 type InputField = {
     id: string;
     type: 'text' | 'file';
@@ -21,6 +21,7 @@ type VisualChoice = {
     label: string;
     value: string;
     imageUrl: string;
+    extraPrice?: number;
 }
 
 type VisualOptionGroup = {
@@ -29,263 +30,342 @@ type VisualOptionGroup = {
     choices: VisualChoice[];
 }
 
-export default function CustomProductBuilder({ product }: CustomProductBuilderProps) {
-  // --- STATE ---
-  const [formValues, setFormValues] = useState<Record<string, string>>({})
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, VisualChoice>>({})
-  const [currentImage, setCurrentImage] = useState<string>('')
-  
-  // New State for Uploading Status (to show spinner while file uploads)
-  const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({})
+type CustomizationItem = {
+    formValues: Record<string, string>
+    selectedOptions: Record<string, VisualChoice>
+}
 
-  // Safely extract config (handle cases where it might be null)
+export default function CustomProductBuilder({ product }: CustomProductBuilderProps) {
+  // Config
   const config = product.customization_config || { inputs: [], visualOptions: [] }
   const inputs: InputField[] = config.inputs || []
   const visualOptions: VisualOptionGroup[] = config.visualOptions || []
+  const enableMultiItem = config.enableMultiItem || false // THE MASTER SWITCH
 
-  // Initialize Default Image
+  // --- STATE ---
+  const [quantity, setQuantity] = useState(1)
+  
+  // Array of Customization Items (If enableMultiItem is true, length = quantity)
+  // If enableMultiItem is false, length = 1
+  const [items, setItems] = useState<CustomizationItem[]>([
+      { formValues: {}, selectedOptions: {} }
+  ])
+
+  const [uploadingState, setUploadingState] = useState<Record<string, boolean>>({}) // Key: "0-label"
+  const [totalPrice, setTotalPrice] = useState(product.base_price)
+
+
+  // --- 1. SYNC ITEMS ARRAY WITH QUANTITY ---
   useEffect(() => {
-    const mainImg = product.product_images?.find((img: any) => img.sort_order === 0)
-    if (mainImg) {
-        setCurrentImage(mainImg.image_url)
-    }
-  }, [product])
+     if (enableMultiItem) {
+        setItems(prev => {
+            if (prev.length === quantity) return prev
+            
+            // If increasing quantity, add new empty items
+            if (quantity > prev.length) {
+                const newItems = [...prev]
+                for (let i = prev.length; i < quantity; i++) {
+                    newItems.push({ formValues: {}, selectedOptions: {} })
+                }
+                return newItems
+            }
+            
+            // If decreasing, cut off the end
+            return prev.slice(0, quantity)
+        })
+     } else {
+        // Legacy mode: Always 1 item
+        if (items.length !== 1) {
+            setItems([items[0] || { formValues: {}, selectedOptions: {} }])
+        }
+     }
+  }, [quantity, enableMultiItem])
 
-  const handleInputChange = (id: string, value: string) => {
-    setFormValues(prev => ({ ...prev, [id]: value }))
+
+  // --- 2. CALCULATE TOTAL PRICE ---
+  useEffect(() => {
+    let total = 0
+    
+    // Loop through every item in the list
+    items.forEach(item => {
+        let itemPrice = Number(product.base_price)
+        
+        // Add extra costs for this specific item
+        Object.values(item.selectedOptions).forEach((choice) => {
+            if (choice.extraPrice) {
+                itemPrice += Number(choice.extraPrice)
+            }
+        })
+        
+        total += itemPrice
+    })
+    
+    // If NOT multi-item (Legacy), we have 1 item config but Quantity > 1
+    // So we multiply the single config price by quantity
+    if (!enableMultiItem) {
+        total = total * quantity
+    }
+
+    setTotalPrice(total)
+  }, [items, quantity, product.base_price, enableMultiItem])
+
+
+  // --- HANDLERS ---
+  const handleOptionSelect = (itemIndex: number, groupName: string, choice: VisualChoice) => {
+    setItems(prev => {
+        const newItems = [...prev]
+        newItems[itemIndex] = {
+            ...newItems[itemIndex],
+            selectedOptions: { ...newItems[itemIndex].selectedOptions, [groupName]: choice }
+        }
+        return newItems
+    })
   }
 
-  // --- NEW: Handle File Upload for Customers ---
-  const handleFileUpload = async (inputId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return
+  const handleTextChange = (itemIndex: number, label: string, value: string) => {
+    setItems(prev => {
+        const newItems = [...prev]
+        newItems[itemIndex] = {
+            ...newItems[itemIndex],
+            formValues: { ...newItems[itemIndex].formValues, [label]: value }
+        }
+        return newItems
+    })
+  }
 
-    const file = e.target.files[0]
-    
-    // Set uploading state for this specific input
-    setUploadingState(prev => ({ ...prev, [inputId]: true }))
-
+  const handleFileUpload = async (itemIndex: number, label: string, file: File) => {
+    const key = `${itemIndex}-${label}`
     try {
-        // 1. Generate unique file path: uploads/timestamp_filename
+        setUploadingState(prev => ({ ...prev, [key]: true }))
+        
         const fileExt = file.name.split('.').pop()
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-        const filePath = `uploads/${fileName}` // Keeping uploads in a subfolder
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+        const filePath = `custom-uploads/${fileName}`
 
-        // 2. Upload to Supabase 'products' bucket (or 'orders' if you prefer)
-        // Note: Ensure your 'products' bucket allows public uploads or create a new public bucket
-        const { error: uploadError } = await supabase.storage
-            .from('products')
+        const { error } = await supabase.storage
+            .from('products') 
             .upload(filePath, file)
 
-        if (uploadError) throw uploadError
+        if (error) throw error
 
-        // 3. Get Public URL
-        const { data } = supabase.storage
+        const { data: { publicUrl } } = supabase.storage
             .from('products')
             .getPublicUrl(filePath)
-        
-        // 4. Save URL to formValues (just like a text input)
-        handleInputChange(inputId, data.publicUrl)
+
+        setItems(prev => {
+            const newItems = [...prev]
+            newItems[itemIndex] = {
+                ...newItems[itemIndex],
+                formValues: { ...newItems[itemIndex].formValues, [label]: publicUrl }
+            }
+            return newItems
+        })
 
     } catch (error) {
-        console.error('Upload failed:', error)
-        alert('File upload failed. Please try again.')
+        console.error('Upload failed', error)
+        alert('Upload failed. Please try again.')
     } finally {
-        setUploadingState(prev => ({ ...prev, [inputId]: false }))
+        setUploadingState(prev => ({ ...prev, [key]: false }))
     }
   }
 
-  const handleOptionSelect = (groupId: string, choice: VisualChoice) => {
-    setSelectedOptions(prev => ({ ...prev, [groupId]: choice }))
-    // If choice has a preview image, update the main image
-    if (choice.imageUrl) {
-        setCurrentImage(choice.imageUrl)
-    }
-  }
-
-  // Validation
+  // --- VALIDATION ---
   const isValid = () => {
-    // Check required inputs
-    for (const input of inputs) {
-        if (input.required && !formValues[input.id]) return false
+    // Check every active item
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        
+        // Check Required Inputs
+        for (const input of inputs) {
+            if (input.required && !item.formValues[input.label]) return false
+        }
+        // Check Required Visual Options
+        for (const group of visualOptions) {
+            if (!item.selectedOptions[group.name]) return false
+        }
     }
     return true
   }
 
-  // Combine all data for Cart
+  // Prepare Data for Cart
+  // If Multi-Item: Send the Array. If Single: Send the Object (for backward compatibility if needed, but array is safer)
   const getCustomizationData = () => {
-    const textData = inputs.map(input => ({
-        label: input.label,
-        value: formValues[input.id]
-    }))
-    
-    const visualData = Object.entries(selectedOptions).map(([groupId, choice]) => {
-        const groupName = visualOptions.find(g => g.id === groupId)?.name || 'Option'
-        return {
-            label: groupName,
-            value: choice.label // Storing the human-readable label (e.g., "Red")
-        }
-    })
-
-    return [...textData, ...visualData]
+      // Return the raw items array. backend will handle it.
+      // We map it to a cleaner format: { "Name": "Rahul", "Color": "Red" }
+      return items.map(item => {
+          const options = Object.entries(item.selectedOptions).reduce((acc, [key, val]) => {
+              acc[key] = val.label
+              return acc
+          }, {} as Record<string, string>)
+          return { ...options, ...item.formValues }
+      })
   }
 
+  // Helper to get preview image (From Item 0 or Product)
+  const previewImage = items[0]?.selectedOptions && Object.values(items[0].selectedOptions).reverse()[0]?.imageUrl 
+    ? Object.values(items[0].selectedOptions).reverse()[0]?.imageUrl 
+    : product.product_images?.[0]?.image_url || '/placeholder.png'
+
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="lg:grid lg:grid-cols-2 lg:gap-x-12 lg:items-start">
+    <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
+      
+      {/* LEFT: Image Gallery */}
+      <div className="space-y-4">
+         <div className="aspect-square relative bg-gray-100 rounded-xl overflow-hidden border sticky top-24">
+            <Image 
+                src={previewImage} 
+                alt="Preview"
+                fill
+                className="object-cover"
+            />
+         </div>
+      </div>
+
+      {/* RIGHT: Builder Controls */}
+      <div>
+        <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
         
-        {/* LEFT COLUMN: Image Gallery */}
-        <div className="flex flex-col-reverse">
-           <div className="mt-6 w-full max-w-2xl mx-auto block lg:max-w-none">
-              <div className="grid grid-cols-4 gap-6">
-                {product.product_images?.map((img: any) => (
-                    <button 
-                        key={img.image_url}
-                        onClick={() => setCurrentImage(img.image_url)}
-                        className={`relative h-24 bg-white rounded-md flex items-center justify-center text-sm font-medium uppercase text-gray-900 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring focus:ring-opacity-50 focus:ring-offset-4 ${currentImage === img.image_url ? 'ring ring-black' : ''}`}
-                    >
-                        <Image src={img.image_url} alt="" fill className="object-cover rounded-md" />
-                    </button>
-                ))}
-              </div>
-           </div>
-           
-           <div className="w-full aspect-square relative bg-gray-100 rounded-lg overflow-hidden">
-                {currentImage && (
-                    <Image 
-                        src={currentImage} 
-                        alt={product.name} 
-                        fill 
-                        className="object-cover object-center"
-                        priority
-                    />
-                )}
-           </div>
+        {/* PRICE DISPLAY */}
+        <div className="text-2xl font-bold mb-6 flex items-center gap-3">
+             <span>₹{totalPrice}</span>
+             {quantity > 1 && (
+                 <span className="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                     ({quantity} items)
+                 </span>
+             )}
         </div>
 
-        {/* RIGHT COLUMN: Customization Controls */}
-        <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{product.name}</h1>
-          <div className="mt-3">
-             <p className="text-3xl text-gray-900">₹{product.base_price}</p>
-          </div>
-          <div className="mt-6">
-             <h3 className="sr-only">Description</h3>
-             <div className="text-base text-gray-700 space-y-6" dangerouslySetInnerHTML={{ __html: product.description }} />
-          </div>
+        <p className="text-gray-600 mb-8">{product.description}</p>
+        
+        {/* QUANTITY SELECTOR (Moved to Top) */}
+        <div className="mb-8 p-4 bg-gray-50 rounded-lg border">
+            <h3 className="font-bold text-sm uppercase mb-3 text-gray-800">Quantity</h3>
+            <div className="flex items-center gap-4">
+                <button onClick={() => setQuantity(q => Math.max(1, q-1))} className="w-10 h-10 rounded border bg-white hover:bg-gray-100 font-bold">-</button>
+                <span className="font-bold text-xl w-8 text-center">{quantity}</span>
+                <button onClick={() => setQuantity(q => q+1)} className="w-10 h-10 rounded border bg-white hover:bg-gray-100 font-bold">+</button>
+            </div>
+            {enableMultiItem && quantity > 1 && (
+                <p className="text-sm text-blue-600 mt-2">
+                    Fill in details for {quantity} separate items below:
+                </p>
+            )}
+        </div>
 
-          <div className="mt-10 border-t pt-10">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">{config.heading || 'Customize Product'}</h2>
-            
-            {/* Visual Options (Colors, etc.) */}
-            <div className="space-y-8 mb-8">
+        <div className="space-y-8 border-t pt-8">
+          
+          {/* RENDER FORM ITEMS (Loop based on items array) */}
+          {items.map((item, index) => (
+             <div key={index} className={`space-y-6 ${index > 0 ? 'border-t pt-8 mt-8' : ''}`}>
+                
+                {enableMultiItem && (
+                    <h3 className="font-black text-lg text-black bg-gray-100 inline-block px-3 py-1 rounded">
+                        Item #{index + 1}
+                    </h3>
+                )}
+
+                {/* 1. VISUAL OPTIONS */}
                 {visualOptions.map((group) => (
                     <div key={group.id}>
-                        <h3 className="text-sm font-medium text-gray-900 mb-4">{group.name}</h3>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                            {group.choices.map((choice) => (
-                                <button
-                                    key={choice.value}
-                                    onClick={() => handleOptionSelect(group.id, choice)}
-                                    className={`
-                                        border rounded-lg p-2 text-center transition hover:border-black
-                                        ${selectedOptions[group.id]?.value === choice.value ? 'border-2 border-black bg-gray-50' : 'border-gray-200'}
-                                    `}
-                                >
-                                    {choice.imageUrl && (
-                                        <div className="relative w-full aspect-square mb-2 rounded overflow-hidden bg-gray-100">
-                                            <Image src={choice.imageUrl} alt={choice.label} fill className="object-cover" />
+                        <h3 className="font-bold text-sm uppercase mb-3 text-gray-800">{group.name}</h3>
+                        <div className="flex flex-wrap gap-3">
+                            {group.choices.map((choice, idx) => {
+                                const isSelected = item.selectedOptions[group.name]?.value === choice.value
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => handleOptionSelect(index, group.name, choice)}
+                                        className={`
+                                            relative border-2 rounded-lg p-1 transition-all
+                                            ${isSelected ? 'border-black ring-1 ring-black bg-gray-50' : 'border-gray-200 hover:border-gray-300'}
+                                        `}
+                                    >
+                                        <div className="flex items-center gap-3 px-3 py-2">
+                                            {choice.imageUrl && (
+                                                <div className="w-8 h-8 rounded-full overflow-hidden relative border">
+                                                    <Image src={choice.imageUrl} alt={choice.label} fill className="object-cover" />
+                                                </div>
+                                            )}
+                                            <div className="text-left">
+                                                <span className={`block text-sm font-medium ${isSelected ? 'text-black' : 'text-gray-600'}`}>
+                                                    {choice.label}
+                                                </span>
+                                                {choice.extraPrice && choice.extraPrice > 0 ? (
+                                                    <span className="text-xs text-green-600 font-bold">+₹{choice.extraPrice}</span>
+                                                ) : null}
+                                            </div>
                                         </div>
-                                    )}
-                                    <span className="text-sm block">{choice.label}</span>
-                                </button>
-                            ))}
+                                    </button>
+                                )
+                            })}
                         </div>
                     </div>
                 ))}
-            </div>
 
-            {/* Inputs (Text & Files) */}
-            {inputs.map((input) => (
-              <div key={input.id} className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {input.label} {input.required && <span className="text-red-500">*</span>}
-                </label>
-                
-                {input.type === 'text' ? (
-                    <input 
-                     type="text"
-                     value={formValues[input.id] || ''}
-                     onChange={(e) => handleInputChange(input.id, e.target.value)}
-                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                     placeholder="Type here..."
-                    />
-                ) : (
-                    // --- CHANGED: FILE UPLOAD UI ---
-                    <div className="space-y-2">
-                        {formValues[input.id] ? (
-                            // Show preview if file uploaded
-                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <span className="text-green-600">✓</span>
-                                    <a href={formValues[input.id]} target="_blank" rel="noreferrer" className="text-sm text-green-700 underline truncate">
-                                        View Uploaded File
-                                    </a>
-                                </div>
-                                <button 
-                                    onClick={() => handleInputChange(input.id, '')}
-                                    className="text-xs text-red-500 hover:text-red-700 font-medium"
-                                >
-                                    Remove
-                                </button>
-                            </div>
+                {/* 2. USER INPUTS */}
+                {inputs.map((input) => (
+                    <div key={input.id}>
+                        <label className="block text-sm font-bold text-gray-800 mb-2">
+                            {input.label} {input.required && <span className="text-red-500">*</span>}
+                        </label>
+                        
+                        {input.type === 'text' ? (
+                            <input 
+                                type="text" 
+                                className="w-full border-2 border-gray-200 p-3 rounded-lg focus:border-black focus:outline-none transition"
+                                placeholder={`Enter ${input.label}`}
+                                value={item.formValues[input.label] || ''}
+                                onChange={(e) => handleTextChange(index, input.label, e.target.value)}
+                            />
                         ) : (
-                            // Show File Input
-                            <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:bg-gray-50 transition text-center cursor-pointer">
+                            <div>
                                 <input 
                                     type="file" 
-                                    onChange={(e) => handleFileUpload(input.id, e)}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    accept="image/*,.pdf,.ai,.dxf"
+                                    className="hidden" 
+                                    id={`file-${index}-${input.id}`}
+                                    onChange={(e) => e.target.files?.[0] && handleFileUpload(index, input.label, e.target.files[0])}
                                 />
-                                {uploadingState[input.id] ? (
-                                    <div className="text-gray-500 font-medium animate-pulse">Uploading...</div>
-                                ) : (
-                                    <div className="space-y-1 pointer-events-none">
-                                        <svg className="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                        <p className="text-sm text-gray-600">
-                                            Click to upload or drag and drop
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            PNG, JPG, PDF up to 10MB
-                                        </p>
-                                    </div>
-                                )}
+                                <label 
+                                    htmlFor={`file-${index}-${input.id}`}
+                                    className={`
+                                        block w-full border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition
+                                        ${item.formValues[input.label] ? 'border-green-500 bg-green-50' : 'border-gray-300 hover:bg-gray-50'}
+                                    `}
+                                >
+                                    {uploadingState[`${index}-${input.label}`] ? (
+                                        <span className="text-gray-500 animate-pulse">Uploading...</span>
+                                    ) : item.formValues[input.label] ? (
+                                        <span className="text-green-700 font-medium">✓ File Uploaded</span>
+                                    ) : (
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium text-gray-600">Click to Upload File</p>
+                                            <p className="text-xs text-gray-400">JPG, PNG, PDF</p>
+                                        </div>
+                                    )}
+                                </label>
                             </div>
                         )}
                     </div>
-                )}
-              </div>
-            ))}
-          </div>
+                ))}
+             </div>
+          ))}
 
           {/* ACTION AREA */}
-          <div className="pt-2">
+          <div className="pt-4 pb-20">
              <AddToCartButton 
                 product={product} 
-                customization={getCustomizationData()}
+                // We flatten the list if it's single mode, or pass array if multi
+                customization={enableMultiItem ? getCustomizationData() : getCustomizationData()[0]}
                 disabled={!isValid()} 
+                price={totalPrice / quantity} // Button expects Unit Price, math works out
+                quantity={quantity}
              />
              {!isValid() && (
-                 <p className="text-center text-sm text-red-500 mt-3 bg-red-50 py-2 rounded">
-                     Please fill all required fields to proceed
+                 <p className="text-center text-sm text-red-500 mt-3">
+                     Please fill all fields for all items to continue
                  </p>
              )}
-          </div>
-          
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 py-3 rounded-lg mt-4">
-             <span>⚡ Production time: <strong>{product.production_time_hours} Hours</strong></span>
           </div>
         </div>
       </div>
