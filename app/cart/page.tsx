@@ -83,12 +83,21 @@ export default function CartPage() {
                        <button onClick={() => removeItem(item.cartItemId)} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
                     </div>
 
-                    <div className="flex items-center gap-4 mt-4">
-                      <div className="flex items-center border rounded">
-                        <button onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)} className="px-3 py-1 hover:bg-gray-100">-</button>
-                        <span className="px-3 py-1 font-medium">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)} className="px-3 py-1 hover:bg-gray-100">+</button>
-                      </div>
+                     <div className="flex items-center gap-4 mt-4">
+                      {item.customization && Array.isArray(item.customization) ? (
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                          <span className="font-medium">Items: {item.customization.length}</span>
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                            Edit product page to change quantity
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center border rounded">
+                          <button onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)} className="px-3 py-1 hover:bg-gray-100">-</button>
+                          <span className="px-3 py-1 font-medium">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)} className="px-3 py-1 hover:bg-gray-100">+</button>
+                        </div>
+                      )}
                       <div className="text-right flex-1">
                          <span className="font-bold">Total: ₹{item.price * item.quantity}</span>
                       </div>

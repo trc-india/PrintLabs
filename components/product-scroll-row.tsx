@@ -55,12 +55,12 @@ export default function ProductScrollRow({ products }: { products: any[] }) {
         onScroll={handleScroll}
         className="flex gap-4 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth snap-x snap-mandatory"
       >
-        {products.map((product) => {
-            const img = product.product_images?.[0]?.image_url
+        {products.filter(Boolean).map((product) => {
+            const img = product.product_images?.[0]?.image_url || null
             return (
-                <Link 
-                    key={product.id} 
-                    href={`/products/${product.slug}`} 
+                <Link
+                    key={product.id}
+                    href={`/products/${product.slug}`}
                     className="w-[160px] sm:w-[220px] flex-shrink-0 snap-start group"
                 >
                     <div className="aspect-square relative bg-gray-50 rounded-xl overflow-hidden mb-3 border border-transparent group-hover:border-gray-200 transition">

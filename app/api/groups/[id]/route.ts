@@ -31,6 +31,7 @@ export async function GET(
       )
     `)
     .eq('group_id', id)
+    .eq('products.status', 'active')
     .order('sort_order', { ascending: true })
 
   if (itemsError) return NextResponse.json({ error: itemsError.message }, { status: 500 })

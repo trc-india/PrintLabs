@@ -70,35 +70,63 @@ export default async function AdminOrderDetailPage({
                       <h3 className="font-semibold text-lg">
                         {item.product_name || item.products?.name || 'Unknown Product'}
                       </h3>
-                      
-                      {/* --- UPDATED: Customization Display with File Links --- */}
-                      {item.customization_details && Array.isArray(item.customization_details) && (
-                        <div className="mt-2 bg-gray-50 p-3 rounded text-sm space-y-1">
-                          {item.customization_details.map((detail: any, i: number) => (
-                            <div key={i} className="grid grid-cols-3 gap-2">
-                              <span className="font-medium text-gray-600">{detail.label}:</span>
-                              <span className="col-span-2 break-all">
-                                {typeof detail.value === 'string' && detail.value.startsWith('http') ? (
-                                  <a 
-                                    href={detail.value} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline hover:text-blue-800 font-medium inline-flex items-center gap-1"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                    </svg>
-                                    Download File
-                                  </a>
-                                ) : (
-                                  detail.value
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {/* ----------------------------------------------------- */}
+                       
+                       {item.customization_details && (
+                         <div className="mt-2 bg-gray-50 p-3 rounded text-sm space-y-2">
+                           {Array.isArray(item.customization_details) ? (
+                             item.customization_details.map((subItem: any, idx: number) => (
+                               <div key={idx} className="border-b border-gray-200 last:border-0 pb-2 last:pb-0 mb-2 last:mb-0">
+                                 <span className="font-bold text-xs text-gray-400 uppercase block mb-1">Item #{idx + 1}</span>
+                                 {Object.entries(subItem).map(([key, value]) => (
+                                   <div key={key} className="grid grid-cols-3 gap-2 pl-2">
+                                     <span className="font-medium text-gray-600">{key}:</span>
+                                     <span className="col-span-2 break-all">
+                                       {typeof value === 'string' && value.startsWith('http') ? (
+                                         <a 
+                                           href={value} 
+                                           target="_blank" 
+                                           rel="noopener noreferrer"
+                                           className="text-blue-600 underline hover:text-blue-800 font-medium inline-flex items-center gap-1"
+                                         >
+                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                           </svg>
+                                           Download File
+                                         </a>
+                                       ) : (
+                                         String(value)
+                                       )}
+                                     </span>
+                                   </div>
+                                 ))}
+                               </div>
+                             ))
+                           ) : (
+                             Object.entries(item.customization_details).map(([key, value]) => (
+                               <div key={key} className="grid grid-cols-3 gap-2">
+                                 <span className="font-medium text-gray-600">{key}:</span>
+                                 <span className="col-span-2 break-all">
+                                   {typeof value === 'string' && value.startsWith('http') ? (
+                                     <a 
+                                       href={value} 
+                                       target="_blank" 
+                                       rel="noopener noreferrer"
+                                       className="text-blue-600 underline hover:text-blue-800 font-medium inline-flex items-center gap-1"
+                                     >
+                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                       </svg>
+                                       Download File
+                                     </a>
+                                   ) : (
+                                     String(value)
+                                   )}
+                                 </span>
+                               </div>
+                             ))
+                           )}
+                         </div>
+                       )}
 
                     </div>
                     <div className="text-right">

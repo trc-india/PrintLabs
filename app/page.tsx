@@ -38,7 +38,7 @@ function CategoryBar({ categories }: { categories: any[] }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4 py-3 overflow-x-auto no-scrollbar">
           <Link
-            href="/categories"
+            href="/products"
             className="flex-shrink-0 px-4 py-1.5 bg-black text-white text-xs font-bold uppercase tracking-wide rounded hover:bg-gray-800 transition"
           >
             View All
@@ -87,6 +87,7 @@ async function DynamicSection({ section }: { section: any }) {
       .from("product_group_items")
       .select("products (id, name, slug, base_price, product_images (image_url))")
       .eq("group_id", section.data_source_id)
+      .eq("products.status", "active")
       .limit(8);
     products = data?.map((d: any) => d.products) || [];
   }
@@ -123,59 +124,63 @@ async function DynamicSection({ section }: { section: any }) {
           />
         ) : section.layout_variant === "scroll_row" ? (
           <ProductScrollRow products={products} />
-        ) : section.layout_variant === "featured_split" ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group">
-              <BigCard product={products[0]} />
-            </div>
-            <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {products.slice(1, 7).map((p: any) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </div>
-        ) : section.layout_variant === "featured_split_right" ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3 order-2 md:order-1">
-              {products.slice(1, 7).map((p: any) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-            <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group order-1 md:order-2">
-              <BigCard product={products[0]} />
-            </div>
-          </div>
-        ) : section.layout_variant === "grid_2_big" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {products.slice(0, 2).map((p: any) => (
-              <div
-                key={p.id}
-                className="relative h-[250px] sm:h-[350px] bg-gray-100 rounded-lg overflow-hidden group"
-              >
-                <BigCard product={p} />
+          ) : section.layout_variant === "featured_split" ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {products[0] && (
+                <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group">
+                  <BigCard product={products[0]} />
+                </div>
+              )}
+              <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {products.slice(1, 7).filter(Boolean).map((p: any) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
               </div>
-            ))}
-          </div>
-        ) : section.layout_variant === "grid_6" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {products.map((p: any) => (
-              <ProductCard key={p.id} product={p} compact />
-            ))}
-          </div>
-        ) : section.layout_variant === "grid_5" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-            {products.map((p: any) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        ) : (
-          /* Default Grid */
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {products.map((p: any) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        )}
+            </div>
+          ) : section.layout_variant === "featured_split_right" ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-3 order-2 md:order-1">
+                {products.slice(1, 7).filter(Boolean).map((p: any) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              {products[0] && (
+                <div className="md:col-span-1 relative h-[300px] md:h-auto bg-gray-100 rounded-lg overflow-hidden group order-1 md:order-2">
+                  <BigCard product={products[0]} />
+                </div>
+              )}
+            </div>
+          ) : section.layout_variant === "grid_2_big" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {products.slice(0, 2).filter(Boolean).map((p: any) => (
+                <div
+                  key={p.id}
+                  className="relative h-[250px] sm:h-[350px] bg-gray-100 rounded-lg overflow-hidden group"
+                >
+                  <BigCard product={p} />
+                </div>
+              ))}
+            </div>
+          ) : section.layout_variant === "grid_6" ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {products.filter(Boolean).map((p: any) => (
+                <ProductCard key={p.id} product={p} compact />
+              ))}
+            </div>
+          ) : section.layout_variant === "grid_5" ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {products.filter(Boolean).map((p: any) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          ) : (
+            /* Default Grid */
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {products.filter(Boolean).map((p: any) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
       </div>
     </section>
   );
@@ -183,7 +188,7 @@ async function DynamicSection({ section }: { section: any }) {
 
 // --- HELPERS ---
 function ProductCard({ product, compact }: { product: any; compact?: boolean }) {
-  const img = product.product_images?.[0]?.image_url;
+  const img = product.product_images?.[0]?.image_url || null;
   return (
     <Link href={`/products/${product.slug}`} className="group block">
       <div className={`aspect-square relative bg-gray-50 rounded-lg overflow-hidden ${compact ? "mb-2" : "mb-3"}`}>
@@ -201,7 +206,7 @@ function ProductCard({ product, compact }: { product: any; compact?: boolean }) 
 
 function BigCard({ product }: { product: any }) {
   if (!product) return null;
-  const img = product.product_images?.[0]?.image_url;
+  const img = product.product_images?.[0]?.image_url || null;
   return (
     <Link href={`/products/${product.slug}`} className="block h-full w-full relative">
       {img && <Image src={img} alt={product.name} fill className="object-cover group-hover:scale-105 transition duration-500" />}

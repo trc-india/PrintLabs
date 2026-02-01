@@ -67,7 +67,11 @@ export default function AddToCartButton({
               : 'bg-black text-white hover:bg-gray-800'
         }`}
       >
-        {added ? 'Added to Cart! ✓' : `Add to Cart - ₹${(price || product.base_price) * quantity}`}
+        {added ? 'Added to Cart! ✓' : (
+          quantity > 1
+            ? `Add to Cart (${quantity} items) - ₹${(price || product.base_price) * quantity}`
+            : `Add to Cart - ₹${(price || product.base_price) * quantity}`
+        )}
       </button>
     </div>
   )
