@@ -3,21 +3,22 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 interface CartItem {
-  cartItemId: string // New Unique ID for the cart line item
+  cartItemId: string
   productId: string
   productName: string
   productSlug: string
   price: number
   quantity: number
   imageUrl: string
-  customization?: any // Stores { "Name": "Shardul", "Material": "Wood" }
+  customization?: any 
 }
 
 interface CartContextType {
   items: CartItem[]
   itemCount: number
   totalAmount: number
-  addItem: (item: Omit<CartItem, 'quantity' | 'cartItemId'>) => void
+  // FIX: Removed 'quantity' from Omit so we can pass it in
+  addItem: (item: Omit<CartItem, 'cartItemId'>) => void
   removeItem: (cartItemId: string) => void
   updateQuantity: (cartItemId: string, quantity: number) => void
   clearCart: () => void
@@ -43,25 +44,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, mounted])
 
-  const addItem = (newItem: Omit<CartItem, 'quantity' | 'cartItemId'>) => {
+  const addItem = (newItem: Omit<CartItem, 'cartItemId'>) => {
     setItems((currentItems) => {
-      // Create a unique signature for this exact configuration
-      const customizationKey = JSON.stringify(newItem.customization || {})
-      const targetCartItemId = `${newItem.productId}-${customizationKey}`
+      // Create a unique ID based on Product + Customization
+      // This ensures "Keychain (Red)" and "Keychain (Blue)" are separate items
+      const customizationString = newItem.customization ? JSON.stringify(newItem.customization) : ''
+      const targetCartItemId = `${newItem.productId}-${customizationString}`
 
-      const existingItem = currentItems.find(
-        (item) => item.cartItemId === targetCartItemId
-      )
+      const existingItem = currentItems.find((item) => item.cartItemId === targetCartItemId)
 
       if (existingItem) {
         return currentItems.map((item) =>
           item.cartItemId === targetCartItemId
-            ? { ...item, quantity: item.quantity + 1 }
+            // FIX: Add the new quantity to the existing quantity
+            ? { ...item, quantity: item.quantity + (newItem.quantity || 1) }
             : item
         )
       }
 
-      return [...currentItems, { ...newItem, quantity: 1, cartItemId: targetCartItemId }]
+      // FIX: Use the passed quantity, or default to 1
+      return [...currentItems, { ...newItem, quantity: newItem.quantity || 1, cartItemId: targetCartItemId }]
     })
   }
 
