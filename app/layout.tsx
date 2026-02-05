@@ -18,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning={true}>
       <body className={inter.className} suppressHydrationWarning={true}>
         <CartProvider>
           {/* Navbar sits at the top of every page */}
-          <Navbar /> 
-          
+          <Navbar />
+
           {/* Main content changes per page */}
           <main className="min-h-screen">
             {children}

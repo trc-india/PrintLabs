@@ -17,7 +17,7 @@ type VisualChoice = {
   label: string
   value: string
   imageUrl: string
-  extraPrice?: number 
+  extraPrice?: number
 }
 
 type VisualOptionGroup = {
@@ -29,7 +29,7 @@ type VisualOptionGroup = {
 type CustomConfig = {
   heading: string
   // NEW: Master switch for repeater mode
-  enableMultiItem?: boolean 
+  enableMultiItem?: boolean
   inputs: InputField[]
   visualOptions: VisualOptionGroup[]
 }
@@ -38,21 +38,21 @@ type CustomConfig = {
 export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  
+
   // Basic Form State
-  const [imageUrls, setImageUrls] = useState<string[]>(['']) 
+  const [imageUrls, setImageUrls] = useState<string[]>([''])
   const [categories, setCategories] = useState<any[]>([])
-  
+
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
     category_id: '',
     description: '',
     base_price: '',
-    compare_at_price: '', 
+    compare_at_price: '',
     sku: '',
     weight_grams: '',
-    tags: '', 
+    tags: '',
     is_customizable: false,
     production_time_hours: 24,
     status: 'active',
@@ -83,11 +83,11 @@ export default function NewProductPage() {
 
   // --- BUILDER HELPERS ---
   const addInput = () => {
-    const newInput: InputField = { 
-        id: `input_${Date.now()}`, 
-        type: 'text', 
-        label: 'Enter text', 
-        required: true
+    const newInput: InputField = {
+      id: `input_${Date.now()}`,
+      type: 'text',
+      label: 'Enter text',
+      required: true
     }
     setCustomConfig({ ...customConfig, inputs: [...customConfig.inputs, newInput] })
   }
@@ -121,11 +121,11 @@ export default function NewProductPage() {
 
   const addChoiceToGroup = (groupIndex: number) => {
     const newGroups = [...customConfig.visualOptions]
-    newGroups[groupIndex].choices.push({ 
-        label: 'New Option', 
-        value: `choice_${Date.now()}`, 
-        imageUrl: '',
-        extraPrice: 0 
+    newGroups[groupIndex].choices.push({
+      label: 'New Option',
+      value: `choice_${Date.now()}`,
+      imageUrl: '',
+      extraPrice: 0
     })
     setCustomConfig({ ...customConfig, visualOptions: newGroups })
   }
@@ -155,6 +155,7 @@ export default function NewProductPage() {
 
     const payload = {
       ...formData,
+      category_id: formData.category_id || null, // Convert empty string to null
       base_price: Number(formData.base_price),
       compare_at_price: formData.compare_at_price ? Number(formData.compare_at_price) : null,
       weight_grams: formData.weight_grams ? Number(formData.weight_grams) : 0,
@@ -163,8 +164,8 @@ export default function NewProductPage() {
         W: Number(dimensions.width),
         H: Number(dimensions.height)
       },
-      tags: formData.tags 
-        ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '') 
+      tags: formData.tags
+        ? formData.tags.split(',').map(t => t.trim()).filter(t => t !== '')
         : [],
       imageUrls: imageUrls.filter(url => url.trim() !== ''),
       customization_config: formData.is_customizable ? customConfig : null
@@ -197,35 +198,35 @@ export default function NewProductPage() {
       <h1 className="text-3xl font-bold mb-8">Add New Product</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        
+
         {/* 1. BASIC INFO */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
           <h2 className="font-bold text-xl border-b pb-2">Basic Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Product Name</label>
-              <input 
-                type="text" required 
+              <input
+                type="text" required
                 value={formData.name}
                 onChange={e => handleNameChange(e.target.value)}
                 className="w-full border p-2 rounded focus:ring-2 focus:ring-black"
               />
             </div>
             <div className="md:col-span-2">
-               <label className="block text-sm font-medium mb-1">Slug (URL)</label>
-               <input 
-                 type="text" required 
-                 value={formData.slug}
-                 onChange={e => setFormData({...formData, slug: e.target.value})}
-                 className="w-full border p-2 rounded bg-gray-50 font-mono text-sm"
-               />
+              <label className="block text-sm font-medium mb-1">Slug (URL)</label>
+              <input
+                type="text" required
+                value={formData.slug}
+                onChange={e => setFormData({ ...formData, slug: e.target.value })}
+                className="w-full border p-2 rounded bg-gray-50 font-mono text-sm"
+              />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea 
+              <textarea
                 rows={4}
                 value={formData.description}
-                onChange={e => setFormData({...formData, description: e.target.value})}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 className="w-full border p-2 rounded"
               />
             </div>
@@ -238,29 +239,29 @@ export default function NewProductPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Base Price (₹)</label>
-              <input 
-                type="number" required 
+              <input
+                type="number" required
                 value={formData.base_price}
-                onChange={e => setFormData({...formData, base_price: e.target.value})}
+                onChange={e => setFormData({ ...formData, base_price: e.target.value })}
                 className="w-full border p-2 rounded font-bold"
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1 text-gray-500">Compare Price (₹)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={formData.compare_at_price}
-                onChange={e => setFormData({...formData, compare_at_price: e.target.value})}
+                onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })}
                 className="w-full border p-2 rounded text-gray-500"
                 placeholder="Optional"
               />
             </div>
-             <div>
+            <div>
               <label className="block text-sm font-medium mb-1">SKU</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={formData.sku}
-                onChange={e => setFormData({...formData, sku: e.target.value})}
+                onChange={e => setFormData({ ...formData, sku: e.target.value })}
                 className="w-full border p-2 rounded uppercase"
               />
             </div>
@@ -269,166 +270,166 @@ export default function NewProductPage() {
 
         {/* 3. SHIPPING */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
-            <h2 className="font-bold text-xl border-b pb-2">Shipping Details</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                    <label className="block text-sm font-medium mb-1">Weight (grams)</label>
-                    <input 
-                        type="number" 
-                        value={formData.weight_grams}
-                        onChange={e => setFormData({...formData, weight_grams: e.target.value})}
-                        className="w-full border p-2 rounded"
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Length (cm)</label>
-                    <input type="number" value={dimensions.length} onChange={e => setDimensions({...dimensions, length: e.target.value})} className="w-full border p-2 rounded" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Width (cm)</label>
-                    <input type="number" value={dimensions.width} onChange={e => setDimensions({...dimensions, width: e.target.value})} className="w-full border p-2 rounded" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Height (cm)</label>
-                    <input type="number" value={dimensions.height} onChange={e => setDimensions({...dimensions, height: e.target.value})} className="w-full border p-2 rounded" />
-                </div>
+          <h2 className="font-bold text-xl border-b pb-2">Shipping Details</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Weight (grams)</label>
+              <input
+                type="number"
+                value={formData.weight_grams}
+                onChange={e => setFormData({ ...formData, weight_grams: e.target.value })}
+                className="w-full border p-2 rounded"
+              />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Length (cm)</label>
+              <input type="number" value={dimensions.length} onChange={e => setDimensions({ ...dimensions, length: e.target.value })} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Width (cm)</label>
+              <input type="number" value={dimensions.width} onChange={e => setDimensions({ ...dimensions, width: e.target.value })} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Height (cm)</label>
+              <input type="number" value={dimensions.height} onChange={e => setDimensions({ ...dimensions, height: e.target.value })} className="w-full border p-2 rounded" />
+            </div>
+          </div>
         </div>
 
         {/* 4. ORGANIZATION */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
-           <h2 className="font-bold text-xl border-b pb-2">Organization</h2>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
-                <select 
-                    value={formData.category_id}
-                    onChange={e => setFormData({...formData, category_id: e.target.value})}
-                    className="w-full border p-2 rounded bg-white"
-                >
-                    <option value="">Select Category</option>
-                    {categories.map((c: any) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
-             </div>
-             <div>
-                <label className="block text-sm font-medium mb-1">Tags</label>
-                <input 
-                    type="text"
-                    value={formData.tags}
-                    onChange={e => setFormData({...formData, tags: e.target.value})}
-                    className="w-full border p-2 rounded"
-                    placeholder="Comma separated"
-                />
-             </div>
-             <div>
-                <label className="block text-sm font-medium mb-1">Production Time (Hours)</label>
-                <input 
-                    type="number"
-                    value={formData.production_time_hours}
-                    onChange={e => setFormData({...formData, production_time_hours: Number(e.target.value)})}
-                    className="w-full border p-2 rounded"
-                />
-             </div>
-           </div>
+          <h2 className="font-bold text-xl border-b pb-2">Organization</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select
+                value={formData.category_id}
+                onChange={e => setFormData({ ...formData, category_id: e.target.value })}
+                className="w-full border p-2 rounded bg-white"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Tags</label>
+              <input
+                type="text"
+                value={formData.tags}
+                onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                className="w-full border p-2 rounded"
+                placeholder="Comma separated"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Production Time (Hours)</label>
+              <input
+                type="number"
+                value={formData.production_time_hours}
+                onChange={e => setFormData({ ...formData, production_time_hours: Number(e.target.value) })}
+                className="w-full border p-2 rounded"
+              />
+            </div>
+          </div>
         </div>
 
         {/* 5. IMAGES */}
         <div className="bg-white p-6 rounded-lg shadow space-y-4">
-           <h2 className="font-bold text-xl border-b pb-2">Product Images</h2>
-           {imageUrls.map((url, index) => (
-             <div key={index} className="flex gap-2 mb-2">
-               <input 
-                 type="text" 
-                 value={url}
-                 onChange={e => {
-                    const newUrls = [...imageUrls]
-                    newUrls[index] = e.target.value
-                    setImageUrls(newUrls)
-                 }}
-                 className="flex-1 border p-2 rounded"
-                 placeholder="https://..."
-               />
-               {index > 0 && (
-                 <button type="button" onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== index))} className="text-red-500 font-bold px-2">×</button>
-               )}
-             </div>
-           ))}
-           <button type="button" onClick={() => setImageUrls([...imageUrls, ''])} className="text-blue-600 font-medium">+ Add Another Image</button>
+          <h2 className="font-bold text-xl border-b pb-2">Product Images</h2>
+          {imageUrls.map((url, index) => (
+            <div key={index} className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={url}
+                onChange={e => {
+                  const newUrls = [...imageUrls]
+                  newUrls[index] = e.target.value
+                  setImageUrls(newUrls)
+                }}
+                className="flex-1 border p-2 rounded"
+                placeholder="https://..."
+              />
+              {index > 0 && (
+                <button type="button" onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== index))} className="text-red-500 font-bold px-2">×</button>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={() => setImageUrls([...imageUrls, ''])} className="text-blue-600 font-medium">+ Add Another Image</button>
         </div>
 
         {/* 6. CUSTOMIZATION BUILDER */}
         <div className="bg-white p-6 rounded-lg shadow border-2 border-transparent focus-within:border-black transition">
           <div className="flex items-center justify-between mb-4 border-b pb-2">
-             <h2 className="font-bold text-xl">Customization Builder</h2>
-             <div className="flex items-center">
-                <input 
-                    type="checkbox"
-                    checked={formData.is_customizable}
-                    onChange={e => setFormData({...formData, is_customizable: e.target.checked})}
-                    className="w-5 h-5 text-black rounded"
-                />
-                <label className="ml-2 font-medium">Enable Customization</label>
-             </div>
+            <h2 className="font-bold text-xl">Customization Builder</h2>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.is_customizable}
+                onChange={e => setFormData({ ...formData, is_customizable: e.target.checked })}
+                className="w-5 h-5 text-black rounded"
+              />
+              <label className="ml-2 font-medium">Enable Customization</label>
+            </div>
           </div>
 
           {formData.is_customizable && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              
+
               {/* Heading */}
               <div>
                 <label className="block text-sm font-medium mb-1">Section Heading</label>
-                <input 
-                    type="text"
-                    value={customConfig.heading}
-                    onChange={e => setCustomConfig({...customConfig, heading: e.target.value})}
-                    className="w-full border p-2 rounded"
+                <input
+                  type="text"
+                  value={customConfig.heading}
+                  onChange={e => setCustomConfig({ ...customConfig, heading: e.target.value })}
+                  className="w-full border p-2 rounded"
                 />
               </div>
 
               {/* NEW: Multi-Item (Repeater) Switch */}
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                 <div className="flex items-center gap-2">
-                    <input 
-                        type="checkbox" 
-                        id="enableMultiItem"
-                        checked={customConfig.enableMultiItem || false}
-                        onChange={e => setCustomConfig({...customConfig, enableMultiItem: e.target.checked})}
-                        className="w-5 h-5 text-blue-600 rounded"
-                    />
-                    <label htmlFor="enableMultiItem" className="font-bold text-blue-900 cursor-pointer">
-                        Enable Multi-Item Customization?
-                    </label>
-                 </div>
-                 <p className="text-sm text-blue-700 mt-1 ml-7">
-                    If checked, when user selects Quantity 3, we show 3 separate sets of input forms. 
-                    <br/>
-                    (Ideal for "3 Friends, 3 Names" scenario).
-                 </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="enableMultiItem"
+                    checked={customConfig.enableMultiItem || false}
+                    onChange={e => setCustomConfig({ ...customConfig, enableMultiItem: e.target.checked })}
+                    className="w-5 h-5 text-blue-600 rounded"
+                  />
+                  <label htmlFor="enableMultiItem" className="font-bold text-blue-900 cursor-pointer">
+                    Enable Multi-Item Customization?
+                  </label>
+                </div>
+                <p className="text-sm text-blue-700 mt-1 ml-7">
+                  If checked, when user selects Quantity 3, we show 3 separate sets of input forms.
+                  <br />
+                  (Ideal for "3 Friends, 3 Names" scenario).
+                </p>
               </div>
 
               {/* A. User Inputs */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-700">1. User Inputs (Text/Files)</h3>
-                    <button type="button" onClick={addInput} className="bg-white border px-3 py-1 rounded text-sm hover:bg-gray-100">+ Add Input</button>
+                  <h3 className="font-bold text-gray-700">1. User Inputs (Text/Files)</h3>
+                  <button type="button" onClick={addInput} className="bg-white border px-3 py-1 rounded text-sm hover:bg-gray-100">+ Add Input</button>
                 </div>
                 <div className="space-y-3">
                   {customConfig.inputs.map((input, index) => (
                     <div key={input.id} className="flex gap-2 items-start bg-white p-3 rounded border">
-                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 flex-1">
-                          <input type="text" value={input.label} onChange={(e) => updateInput(index, 'label', e.target.value)} className="border p-2 rounded text-sm" placeholder="Label (e.g. Enter Name)" />
-                          <select value={input.type} onChange={(e) => updateInput(index, 'type', e.target.value)} className="border p-2 rounded text-sm">
-                             <option value="text">Text Field</option>
-                             <option value="file">File Upload</option>
-                          </select>
-                          <div className="flex items-center gap-2">
-                             <input type="checkbox" checked={input.required} onChange={(e) => updateInput(index, 'required', e.target.checked)} />
-                             <span className="text-sm">Required</span>
-                          </div>
-                       </div>
-                       <button type="button" onClick={() => removeInput(index)} className="text-red-500 font-bold px-2">×</button>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 flex-1">
+                        <input type="text" value={input.label} onChange={(e) => updateInput(index, 'label', e.target.value)} className="border p-2 rounded text-sm" placeholder="Label (e.g. Enter Name)" />
+                        <select value={input.type} onChange={(e) => updateInput(index, 'type', e.target.value)} className="border p-2 rounded text-sm">
+                          <option value="text">Text Field</option>
+                          <option value="file">File Upload</option>
+                        </select>
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" checked={input.required} onChange={(e) => updateInput(index, 'required', e.target.checked)} />
+                          <span className="text-sm">Required</span>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => removeInput(index)} className="text-red-500 font-bold px-2">×</button>
                     </div>
                   ))}
                 </div>
@@ -437,8 +438,8 @@ export default function NewProductPage() {
               {/* B. Visual Options */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-700">2. Visual Choices (Material/Color)</h3>
-                    <button type="button" onClick={addVisualGroup} className="bg-white border px-3 py-1 rounded text-sm hover:bg-gray-100">+ Add Group</button>
+                  <h3 className="font-bold text-gray-700">2. Visual Choices (Material/Color)</h3>
+                  <button type="button" onClick={addVisualGroup} className="bg-white border px-3 py-1 rounded text-sm hover:bg-gray-100">+ Add Group</button>
                 </div>
                 <div className="space-y-6">
                   {customConfig.visualOptions.map((group, gIndex) => (
@@ -448,30 +449,30 @@ export default function NewProductPage() {
                         <label className="text-xs font-bold text-gray-500 uppercase">Group Name</label>
                         <input type="text" value={group.name} onChange={(e) => updateGroup(gIndex, 'name', e.target.value)} className="border p-1 rounded w-full" placeholder="e.g. Material" />
                       </div>
-                      
+
                       <div className="space-y-2 pl-4 border-l-2 border-gray-100">
                         {group.choices.map((choice, cIndex) => (
                           <div key={cIndex} className="flex gap-2 items-center">
                             <input type="text" value={choice.label} onChange={(e) => updateChoice(gIndex, cIndex, 'label', e.target.value)} className="border p-1 text-sm bg-white w-1/4" placeholder="Label" />
-                            
+
                             <div className="relative w-20">
-                                <span className="absolute left-1 top-1 text-xs text-gray-400">₹</span>
-                                <input 
-                                    type="number" 
-                                    value={choice.extraPrice || 0} 
-                                    onChange={(e) => updateChoice(gIndex, cIndex, 'extraPrice', Number(e.target.value))} 
-                                    className="border p-1 pl-4 text-sm bg-green-50 w-full" 
-                                    placeholder="0" 
-                                />
+                              <span className="absolute left-1 top-1 text-xs text-gray-400">₹</span>
+                              <input
+                                type="number"
+                                value={choice.extraPrice || 0}
+                                onChange={(e) => updateChoice(gIndex, cIndex, 'extraPrice', Number(e.target.value))}
+                                className="border p-1 pl-4 text-sm bg-green-50 w-full"
+                                placeholder="0"
+                              />
                             </div>
 
                             <input type="text" value={choice.value} onChange={(e) => updateChoice(gIndex, cIndex, 'value', e.target.value)} className="border p-1 text-sm bg-white w-1/4" placeholder="Value (ID)" />
-                            <input type="text" value={choice.imageUrl} onChange={(e) => updateChoice(gIndex, cIndex, 'imageUrl', e.target.value)} placeholder="Image URL" className="border p-1 text-sm bg-blue-50 flex-1"/>
+                            <input type="text" value={choice.imageUrl} onChange={(e) => updateChoice(gIndex, cIndex, 'imageUrl', e.target.value)} placeholder="Image URL" className="border p-1 text-sm bg-blue-50 flex-1" />
                             <button type="button" onClick={() => removeChoice(gIndex, cIndex)} className="text-red-500 font-bold px-2">×</button>
                           </div>
                         ))}
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => addChoiceToGroup(gIndex)}
                           className="text-sm text-blue-600 underline font-bold"
                         >

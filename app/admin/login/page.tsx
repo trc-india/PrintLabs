@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
 
       if (response.ok) {
         // Redirect to admin dashboard
-        router.push('/admin/dashboard')
+        router.push('/admin')
         router.refresh()
       } else {
         setError(data.error || 'Invalid credentials')
